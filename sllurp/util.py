@@ -1,6 +1,4 @@
-from __future__ import unicode_literals
 from inspect import stack
-import re
 
 
 def BIT(n):
@@ -22,17 +20,3 @@ def reverse_dict(data):
         i = data[m]
         atad[i] = m
     return atad
-
-
-def atoi(text):
-    return int(text) if text.isdigit() else text
-
-
-def natural_keys(text):
-    """Sort alphanumerics in a "natural" order
-    Source: https://stackoverflow.com/questions/5967500/
-
-    >>> sorted(['foo25', 'foo3'], key=natural_keys)
-    ['foo3', 'foo25']
-    """
-    return [atoi(c) for c in re.split('(\d+)', text)]

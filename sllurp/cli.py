@@ -1,17 +1,15 @@
 """Command-line wrapper for sllurp commands.
 """
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 from collections import namedtuple
 import logging
 import click
 from . import log, __version__
 from .verb import reset as _reset
 from .verb import inventory as _inventory
-from .llrp_proto import Modulation_Name2Type
+from .llrp_proto import Modulation_Name2Type, DEFAULT_MODULATION
 
-# Disable Click unicode warning since we use unicode string exclusively
-click.disable_unicode_literals_warning = True
 
 logger = logging.getLogger(__name__)
 mods = sorted(Modulation_Name2Type.keys())
@@ -36,28 +34,30 @@ def cli(debug, logfile):
 @click.option('-X', '--tx-power', type=int, default=0,
               help='transmit power (default 0=max power)')
 @click.option('-M', '--modulation', type=click.Choice(mods),
-              help='Reader-to-Tag Modulation')
+              default=DEFAULT_MODULATION,
+              help='modulation (default={})'.format(DEFAULT_MODULATION))
 @click.option('-T', '--tari', type=int, default=0,
               help='Tari value (default 0=auto)')
 @click.option('-s', '--session', type=int, default=2,
               help='Gen2 session (default 2)')
 @click.option('--mode-identifier', type=int, help='ModeIdentifier value')
+@click.option('--mode-index', type=int, help='ModeIndex value')
 @click.option('-P', '--tag-population', type=int, default=4,
               help="Tag Population value (default 4)")
 @click.option('-r', '--reconnect', is_flag=True, default=False,
               help='reconnect on connection failure or loss')
 def inventory(host, port, time, report_every_n_tags, antennas, tx_power,
-              modulation, tari, session, mode_identifier,
+              modulation, tari, session, mode_identifier, mode_index,
               tag_population, reconnect):
     # XXX band-aid hack to provide many args to _inventory.main
     Args = namedtuple('Args', ['host', 'port', 'time', 'every_n', 'antennas',
                                'tx_power', 'modulation', 'tari', 'session',
-                               'population', 'mode_identifier',
+                               'population', 'mode_identifier', 'mode_index',
                                'reconnect'])
     args = Args(host=host, port=port, time=time, every_n=report_every_n_tags,
                 antennas=antennas, tx_power=tx_power, modulation=modulation,
                 tari=tari, session=session, population=tag_population,
-                mode_identifier=mode_identifier,
+                mode_identifier=mode_identifier, mode_index=mode_index,
                 reconnect=reconnect)
     logger.debug('inventory args: %s', args)
     _inventory.main(args)

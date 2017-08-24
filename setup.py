@@ -16,17 +16,17 @@ def read(filename):
         return f.read()
 
 
-test_deps = ['nose2', 'flake8', 'tox']
+test_deps = ['nose2', 'flake8']
 install_deps = [
     'click',
-    'twisted',
+    'twisted==16.4.1',
     'six',
 ]
 
 
 setup(
     name='sllurp',
-    version='0.3.0',
+    version='0.2.4',
     description='RFID reader control library',
     long_description=read('README.rst'),
     author='Ben Ransford',
@@ -41,8 +41,6 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
     ],
     keywords='llrp rfid reader',
     packages=find_packages(),

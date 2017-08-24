@@ -49,18 +49,17 @@ def main(args):
         return 0
 
     # special case default Tari values
-    tari = args.tari
     if args.modulation in Modulation_DefaultTari:
         t_suggested = Modulation_DefaultTari[args.modulation]
         if args.tari:
             logger.warn('recommended Tari for %s is %d', args.modulation,
                         t_suggested)
         else:
-            tari = t_suggested
+            args.tari = t_suggested
             logger.info('selected recommended Tari of %d for %s', args.tari,
                         args.modulation)
 
-    enabled_antennas = [int(x.strip()) for x in args.antennas.split(',')]
+    enabled_antennas = map(lambda x: int(x.strip()), args.antennas.split(','))
 
     # d.callback will be called when all connections have terminated normally.
     # use d.addCallback(<callable>) to define end-of-program behavior.
@@ -73,12 +72,13 @@ def main(args):
                             antennas=enabled_antennas,
                             tx_power=args.tx_power,
                             modulation=args.modulation,
-                            tari=tari,
+                            tari=args.tari,
                             session=args.session,
+                            mode_index=args.mode_index,
                             mode_identifier=args.mode_identifier,
                             tag_population=args.population,
                             start_inventory=True,
-                            disconnect_when_done=args.time and args.time > 0,
+                            disconnect_when_done=(args.time > 0),
                             reconnect=args.reconnect,
                             tag_content_selector={
                                 'EnableROSpecID': False,
