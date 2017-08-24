@@ -23,93 +23,48 @@ sllurp is distributed under version 3 of the GNU General Public License.  See
 
 .. _GitHub: https://github.com/ransford/sllurp/
 
+
+Branch modifications
+--------------------
+
+This branch modifies the package heaviliy to make it suitable for fast re-configurations of the reader, i.e. connecting, changing a rospec parameter, inventoring, disconnecting.
+As the twisted socket only allows one connection after import, we had to fake its API and implement an own transport class using the standard socket of python.
+This is very hacky and is not intended for an actual application or framework.
+There is a new module named "reader" where this hack is implemented for the most part.
+We also had to modify the "llrp", "llrp_proto" and "llrp_decoder" modules to handle impinj specific extensions we need.
+Again, very hacky implemented right now, as the package was not designed to handle custom extensions.
+
+The longterm aim for this branch is to get rid of twisted (and probably the other third-party packages) entirely and to simplify the package code to concentrate on inventoring tags on demand.
+
 Quick Start
 -----------
 
-Install from PyPI_::
-
-    $ virtualenv .venv
-    $ source .venv/bin/activate
-    $ pip install sllurp
-    $ sllurp inventory ip.add.re.ss
-
-Run ``sllurp --help`` and ``sllurp inventory --help`` to see options.
-
-Or install from GitHub_::
-
-    $ git clone https://github.com/ransford/sllurp.git
-    $ cd sllurp
-    $ virtualenv .venv
-    $ source .venv/bin/activate
-    $ pip install .
-    $ sllurp inventory ip.add.re.ss
-
-If the reader gets into a funny state because you're debugging against it
-(e.g., if your program or sllurp has crashed), you can set it back to an idle
-state by running ``sllurp reset ip.add.re.ss``.
-
-.. _PyPI: https://pypi.python.org/pypi/sllurp
-.. _GitHub: https://github.com/ransford/sllurp/
-
-Reader API
-----------
-
-sllurp relies on Twisted_ for network interaction with the reader.  To make a
-connection, create an `LLRPClientFactory` and hand it to Twisted:
-
 .. code:: python
 
-    # Minimal example; see inventory.py for more.
-    from sllurp import llrp
-    from twisted.internet import reactor
-    import logging
-    logging.getLogger().setLevel(logging.INFO)
-
-    def cb (tagReport):
-        tags = tagReport.msgdict['RO_ACCESS_REPORT']['TagReportData']
-        print 'tags:', tags
-
-    factory = llrp.LLRPClientFactory()
-    factory.addTagReportCallback(cb)
-    reactor.connectTCP('myreader', llrp.LLRP_PORT, factory)
-    reactor.run()
-
-.. _Twisted: http://twistedmatrix.com/
-
-Getting More Information From Tag Reports
------------------------------------------
-
-When initializing ``LLRPClientFactory``, set flags in the
-``tag_content_selector`` dictionary argument:
-
-.. code:: python
-
-    llrp.LLRPClientFactory(tag_content_selector={
-        'EnableROSpecID': False,
-        'EnableSpecIndex': False,
-        'EnableInventoryParameterSpecID': False,
-        'EnableAntennaID': True,
-        'EnableChannelIndex': False,
-        'EnablePeakRRSI': True,
-        'EnableFirstSeenTimestamp': False,
-        'EnableLastSeenTimestamp': True,
-        'EnableTagSeenCount': True,
-        'EnableAccessSpecID': False,
-    }, ...)
-
+	from sllurp.reader import R420_EU
+	
+	reader = R420_EU('192.168.4.2')
+	
+	freqs = reader.freqTable
+	powers = reader.powerTable
+	
+	tags = reader.detectTags(powerDBm=powers[-1], freqMHz=freqs[0], 
+		mode=1002, session=2, population=1, duration=0.5, 
+		impinj_searchmode=2)
+	
+	for iTag, tag in enumerate(tags):
+		print('\n---- Tag {} ----'.format(iTag+1))
+		for k, v in tag.items():
+			print('{}: {}'.format(k, v))
 
 Logging
 -------
 
-sllurp logs under the name ``sllurp``, so if you wish to log its output, you
-can do this the application that imports sllurp:
-
 .. code:: python
-
-    sllurp_logger = logging.getLogger('sllurp')
-    sllurp_logger.setLevel(logging.DEBUG)
-    sllurp_logger.setHandler(logging.FileHandler('sllurp.log'))
-    # or .setHandler(logging.StreamHandler()) to log to stderr...
+	
+    import logging
+	
+	logging.basicConfig(filename='llrp.log', level=logging.DEBUG)
 
 Handy Reader Commands
 ---------------------
