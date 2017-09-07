@@ -25,13 +25,17 @@ i.e. connecting, changing a rospec parameter, inventoring, changing a rospec par
 
 
 As the twisted socket only allows one connection after import, we had to implement an own transport class using the standard socket of python.
-There is a new module `reader.py<sllurp/reader.py>`_ where specific reader classes can inherit from the LLRPClient.
-We also modified the `llrp.py<sllurp/llrp.py>`_, `llrp_proto.py<sllurp/llrp_proto.py>`_ and `llrp_decoder.py<sllurp/llrp_decoder.py>`_ modules to handle impinj specific extensions we need.
-`llrp.py<sllurp/llrp.py>`_ is now completely rewritten to be state-less and does not depend on twisted.
+There is a new module reader_ where specific reader classes can inherit from the LLRPClient.
+We also modified the llrp_, llrp_proto_ and llrp_decoder_ modules to handle impinj specific extensions we need.
+Also, llrp_ is now completely rewritten to be state-less and does not depend on twisted.
 That way, the code is much cleaner and there is no hassle with chaining deferreds.
 
-
 Currently, only inventoring is implemented (scrapped the access methods).
+
+.. _reader: sllurp/reader.py
+.. _llrp: sllurp/llrp.py
+.. _llrp_proto: sllurp/llrp_proto.py
+.. _llrp_decoder: sllurp/llrp_decoder.py
 
 Quick Start
 -----------
