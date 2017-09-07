@@ -247,7 +247,7 @@ class LLRPClient(object):
 		self.power_table = self.parsePowerTable(bandcap)
 		logger.debug('power_table: %s', self.power_table)
 		# check for valid power index
-		maxPower = max(self.power_table)
+		maxPower = self.power_table.index(max(self.power_table))
 		if self.power > maxPower or self.power <= 0:
 			self.power = maxPower
 			logger.info('Wrong power index specified. Setting to max power')

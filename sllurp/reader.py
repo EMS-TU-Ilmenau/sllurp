@@ -71,6 +71,7 @@ class R420_EU(llrp.LLRPClient):
 		self.parseCapabilities(self.capabilities)
 		
 		# start inventory
+		self.inventoryFinished = False
 		self.detectedTags = []
 		self.startInventory()
 		# wait for first tagreport
