@@ -6,7 +6,6 @@ import codecs
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-
 def read(filename):
     """
     Get the long description from a file.
@@ -14,15 +13,6 @@ def read(filename):
     fname = os.path.join(here, filename)
     with codecs.open(fname, encoding='utf-8') as f:
         return f.read()
-
-
-test_deps = ['nose2', 'flake8']
-install_deps = [
-    'click',
-    'twisted==16.4.1',
-    'six',
-]
-
 
 setup(
     name='sllurp',
@@ -44,13 +34,4 @@ setup(
     ],
     keywords='llrp rfid reader',
     packages=find_packages(),
-    install_requires=install_deps,
-    tests_require=test_deps,
-    extras_require={'test': test_deps},
-    test_suite='nose2.collector.collector',
-    entry_points={
-        'console_scripts': [
-            'sllurp=sllurp.cli:cli',
-        ],
-    },
 )

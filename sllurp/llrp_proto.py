@@ -3003,7 +3003,7 @@ def decode_ImpinjEnableExtensionsResponse(data):
 	# decode status
 	return decode_StatusResponse(data[fmt_len:])
 
-Message_struct['ImpinjEnableExtensionsResponse'] = {
+Message_struct['IMPINJ_ENABLE_EXTENSIONS_RESPONSE'] = {
 	'type': EXT_TYPE,
 	'vendorID': IPJ_VEND,
 	'subtype': 22,
@@ -3146,12 +3146,12 @@ def llrp_data2xml(msg):
 
 
 class LLRPROSpec(dict):
-	def __init__(self, llrpcli, msgid, priority=0, state='Disabled',
-				antennas=(1,), tx_power=91, duration_sec=None,
-				report_every_n_tags=None, report_timeout_ms=0,
-				tag_content_selector={}, impinj_content_selector={}, 
-				mode_index=None, mode_identifier=None, tari=None,
-				session=2, tag_population=4, channel=1, impinj_searchmode=0):
+	def __init__(self, msgid, priority=0, state='Disabled',
+				antennas=(1,), power=80, channel=1, 
+				report_interval=1, report_every_n_tags=None, report_timeout=5,
+				report_selection={}, impinj_report_selection={}, 
+				mode_index=1, tari=16670,
+				session=2, population=1, impinj_searchmode=0):
 		# Sanity checks
 		if msgid <= 0:
 			raise LLRPError('invalid ROSpec message ID {} (need >0)'.format(
@@ -3162,17 +3162,7 @@ class LLRPROSpec(dict):
 		if state not in ROSpecState_Name2Type:
 			raise LLRPError('invalid ROSpec state {} (need [{}])'.format(
 							state, ','.join(ROSpecState_Name2Type.keys())))
-	
-		if tari is None:
-			tari = llrpcli.reader_mode['MaxTari']
-	
-		if mode_index is None:
-			# BUG: Impinj Speedway Revolution readers, and possibly others,
-			# seem to want a ModeIdentifier value for the ModeIndex parameter
-			# rather than an actual index into the array of modes.
-			# https://github.com/ransford/sllurp/issues/63
-			mode_index = llrpcli.reader_mode['ModeIdentifier']
-	
+		
 		tagReportContentSelector = {
 			'EnableROSpecID': False,
 			'EnableSpecIndex': False,
@@ -3185,9 +3175,9 @@ class LLRPROSpec(dict):
 			'EnableTagSeenCount': True,
 			'EnableAccessSpecID': False,
 		}
-		if tag_content_selector:
-			tagReportContentSelector.update(tag_content_selector)
-	
+		if report_selection:
+			tagReportContentSelector.update(report_selection)
+		
 		self['ROSpec'] = {
 			'ROSpecID': msgid,
 			'Priority': priority,
@@ -3221,9 +3211,9 @@ class LLRPROSpec(dict):
 		}
 		
 		# patch custom tag report
-		if impinj_content_selector:
-			self['ROSpec']['ROReportSpec']['ImpinjTagReportContentSelector'] = impinj_content_selector
-	
+		if impinj_report_selection:
+			self['ROSpec']['ROReportSpec']['ImpinjTagReportContentSelector'] = impinj_report_selection
+		
 		# patch up per-antenna config
 		for antid in antennas:
 			ips = self['ROSpec']['AISpec']['InventoryParameterSpec']
@@ -3232,7 +3222,7 @@ class LLRPROSpec(dict):
 				'RFTransmitter': {
 					'HopTableId': 1,
 					'ChannelIndex': channel,
-					'TransmitPower': tx_power,
+					'TransmitPower': power,
 				},
 				'C1G2InventoryCommand': {
 					'TagInventoryStateAware': False,
@@ -3242,31 +3232,31 @@ class LLRPROSpec(dict):
 					},
 					'C1G2SingulationControl': {
 						'Session': session,
-						'TagPopulation': tag_population,
+						'TagPopulation': population,
 						'TagTransitTime': 0
 					}
 				}
 			}
 			# patch impinj searchmode
-			if tag_content_selector:
+			if report_selection:
 				antconf['C1G2InventoryCommand']['ImpinjInventorySearchMode'] = impinj_searchmode
 			
 			ips['AntennaConfiguration'].append(antconf)
-	
-		if duration_sec is not None:
+		
+		if report_interval is not None:
 			self['ROSpec']['ROBoundarySpec']['ROSpecStopTrigger'] = {
 				'ROSpecStopTriggerType': 'Duration',
-				'DurationTriggerValue': int(duration_sec * 1000)
+				'DurationTriggerValue': int(report_interval * 1000)
 			}
 			self['ROSpec']['AISpec']['AISpecStopTrigger'] = {
 				'AISpecStopTriggerType': 'Duration',
-				'DurationTriggerValue': int(duration_sec * 1000)
+				'DurationTriggerValue': int(report_interval * 1000)
 			}
-	
+		
 		if report_every_n_tags is not None:
-			if report_timeout_ms:
+			if report_timeout:
 				logger.info('will report every ~N=%d tags or %d ms',
-							report_every_n_tags, report_timeout_ms)
+							report_every_n_tags, report_timeout * 1000)
 			else:
 				logger.info('will report every ~N=%d tags',
 							report_every_n_tags)
@@ -3277,7 +3267,7 @@ class LLRPROSpec(dict):
 					'NumberOfTags': report_every_n_tags,
 					'NumberOfAttempts': 0,
 					'T': 0,
-					'Timeout': report_timeout_ms,  # milliseconds
+					'Timeout': report_timeout * 1000,  # milliseconds
 				},
 			})
 	
