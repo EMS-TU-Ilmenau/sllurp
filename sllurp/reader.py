@@ -12,7 +12,7 @@ nearestIndex = lambda a, v: (np.abs(np.asarray(a)-v)).argmin()
 class R420_EU(llrp.LLRPClient):
 	def __init__(self, ip='192.168.4.2', *args, **kwargs):
 		self.detectedTags = []
-		self.inventoryFinished = False
+		self.round = 0
 		# hard codes frequency channels for ETSI EN 302-208 v1.4.1
 		# getting actual frequency table (from device config) is not implemented in sllurp
 		self.freq_table = [865.7, 866.3, 866.9, 867.5]
@@ -28,7 +28,7 @@ class R420_EU(llrp.LLRPClient):
 		self.enableImpinjFeatures()
 		print('Connected to reader')
 		
-	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, **kwargs):
+	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, rounds=1, **kwargs):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
@@ -42,6 +42,7 @@ class R420_EU(llrp.LLRPClient):
 		:param searchmode: impinj specific muting mode
 			Valid values are 0 (not enabled), 1, 2, 3
 		:param population: number of tags estimated in the readers scope
+		:param rounds: number of tag reports until stopping inventoring
 		:returns: list of detected tags with their meta informations
 		'''
 		# update settings
@@ -71,26 +72,27 @@ class R420_EU(llrp.LLRPClient):
 		self.parseCapabilities(self.capabilities)
 		
 		# start inventory
-		self.inventoryFinished = False
+		self.round = 0
 		self.detectedTags = []
 		self.startInventory()
-		# wait for first tagreport
-		self.readLLRPMessage('RO_ACCESS_REPORT')
+		# wait for tagreport
+		while self.round < rounds:
+			self.readLLRPMessage('RO_ACCESS_REPORT')
 		# stop
 		self.stopPolitely()
 		
-		return self.detectedTags
+		# return results
+		if rounds == 1:
+			return self.detectedTags[0]
+		else:
+			return self.detectedTags[:rounds]
 	
 	def foundTags(self, msgdict):
 		'''report about found tags'''
-		if self.inventoryFinished:
-			# already found tags
-			return
-		tags = msgdict['TagReportData']
-		if tags:
-			self.detectedTags = tags # save tag list
-		print('{} tags detected'.format(len(self.detectedTags)))
-		self.inventoryFinished = True
+		tags = msgdict['TagReportData'] or []
+		self.detectedTags.append(tags) # save tag list
+		print('{} tags detected'.format(len(tags)))
+		self.round += 1
 	
 	def getPowerIndex(self, powDBm):
 		'''search nearest matching power in table
