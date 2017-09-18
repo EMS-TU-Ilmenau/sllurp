@@ -13,6 +13,7 @@ class R420_EU(llrp.LLRPClient):
 	def __init__(self, ip='192.168.4.2', *args, **kwargs):
 		self.detectedTags = []
 		self.round = 0
+		self.rounds = 1
 		# hard codes frequency channels for ETSI EN 302-208 v1.4.1
 		# getting actual frequency table (from device config) is not implemented in sllurp
 		self.freq_table = [865.7, 866.3, 866.9, 867.5]
@@ -71,11 +72,13 @@ class R420_EU(llrp.LLRPClient):
 		# check settings against capabilities
 		self.parseCapabilities(self.capabilities)
 		
-		# start inventory
+		# prepare inventory
+		self.rounds = rounds
 		self.round = 0
 		self.detectedTags = []
+		# start inventory
 		self.startInventory()
-		# wait for tagreport
+		# wait for tagreport(s)
 		while self.round < rounds:
 			self.readLLRPMessage('RO_ACCESS_REPORT')
 		# stop
@@ -85,10 +88,12 @@ class R420_EU(llrp.LLRPClient):
 		if rounds == 1:
 			return self.detectedTags[0]
 		else:
-			return self.detectedTags[:rounds]
+			return self.detectedTags
 	
 	def foundTags(self, msgdict):
 		'''report about found tags'''
+		if self.round >= self.rounds:
+			return
 		tags = msgdict['TagReportData'] or []
 		self.detectedTags.append(tags) # save tag list
 		print('{} tags detected'.format(len(tags)))
