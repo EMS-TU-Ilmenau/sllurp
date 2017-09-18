@@ -215,11 +215,14 @@ class LLRPClient(object):
 		if self.impinj_report_selection:
 			self.enableImpinjFeatures()
 	
+	def disconnect(self):
+		self.transport.disconnect()
+	
 	def __del__(self):
 		# close connection
 		if self.transport.isConnected:
 			self.stopPolitely()
-			self.transport.disconnect()
+			self.disconnect()
 	
 	def addMsgCallback(self, msg, cb):
 		'''Adds a function callback which is called for a 
