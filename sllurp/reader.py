@@ -1,5 +1,4 @@
-#!/bin/bash
-import llrp # low level reader protocoll
+from . import llrp # low level reader protocoll
 import numpy as np # for building tx power table and searching in tables
 
 '''
