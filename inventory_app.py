@@ -142,6 +142,7 @@ class InventoryApp(object):
 			infos = ''
 			for key, val in tag:
 				infos += '{}: {}\n'.format(key, val)
+			self.tagInfo.set(infos)
 
 if __name__ == '__main__':
 	InventoryApp()
