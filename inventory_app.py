@@ -75,7 +75,9 @@ class InventoryApp(object):
 		taglist = tk.Frame(self.root)
 		taglist.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 		# header
-		tk.Label(taglist, text='Tags detected', font=headFont).pack()
+		self.tagsHeader = tk.StringVar()
+		self.tagsHeader.set('Tags detected')
+		tk.Label(taglist, textvariable=self.tagsHeader, font=headFont).pack()
 		# list containing detected tags
 		scrollbar = tk.Scrollbar(taglist, orient=tk.VERTICAL)
 		self.tagsDetected = tk.Listbox(taglist, yscrollcommand=scrollbar.set, selectmode=tk.SINGLE)
@@ -112,8 +114,19 @@ class InventoryApp(object):
 	
 	def inventory(self):
 		if self.reader:
-			self.tagsDetected.delete(0, END) # clear list
+			# inventory with settings
+			self.reader.detectTags(
+				powerDBm=self.power, 
+				freqMHz=self.freq, 
+				duration=self.duration, 
+				mode=self.presetmode, 
+				session=self.session, 
+				searchmode=self.searchmode, 
+				population=self.population)
+			# get number of tags
+			self.tagsHeader.set('{} Tags detected'.format(len(self.reader.detectedTags)))
 			# insert found tags
+			self.tagsDetected.delete(0, END) # clear list
 			for tag in self.reader.detectedTags:
 				rssi = tag.get('RSSI', tag.get('PeakRSSI'))
 				# make indicator for RSSI
