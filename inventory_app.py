@@ -8,6 +8,7 @@ class InventoryApp(object):
 	def __init__(self):
 		self.root = tk.Tk()
 		self.reader = None
+		self.tags = []
 		
 		# initially place in the middle of the screen
 		sizeX, sizeY = 640, 360
@@ -115,19 +116,19 @@ class InventoryApp(object):
 	def inventory(self):
 		if self.reader:
 			# inventory with settings
-			self.reader.detectTags(
-				powerDBm=self.power, 
-				freqMHz=self.freq, 
-				duration=self.duration, 
-				mode=self.presetmode, 
-				session=self.session, 
-				searchmode=self.searchmode, 
-				population=self.population)
+			self.tags = self.reader.detectTags(
+				powerDBm=self.power.get(), 
+				freqMHz=self.freq.get(), 
+				duration=self.duration.get(), 
+				mode=self.presetmode.get(), 
+				session=self.session.get(), 
+				searchmode=self.searchmode.get(), 
+				population=self.population.get())
 			# get number of tags
-			self.tagsHeader.set('{} Tags detected'.format(len(self.reader.detectedTags)))
+			self.tagsHeader.set('{} Tags detected'.format(len(self.tags)))
 			# insert found tags
-			self.tagsDetected.delete(0, END) # clear list
-			for tag in self.reader.detectedTags:
+			self.tagsDetected.delete(0, tk.END) # clear list
+			for tag in self.tags:
 				rssi = tag.get('RSSI', tag.get('PeakRSSI'))
 				# make indicator for RSSI
 				if rssi >= -40:
@@ -145,15 +146,15 @@ class InventoryApp(object):
 				epc = tag.get('EPC-96', '0000')
 				id = int(epc[-2:], 16)
 				# insert line with EPC, ID and RSSI
-				self.tagsDetected.insert(END, '{} ({}) | {}'.format(epc, id, stars))
+				self.tagsDetected.insert(tk.END, '{} (...{}) | {}'.format(epc, id, stars))
 	
-	def selectTag(event):
+	def selectTag(self, event):
 		if self.reader:
 			index = self.tagsDetected.curselection()[0]
-			tag = self.reader.detectedTags[index]
+			tag = self.tags[index]
 			# show selected tag infos
 			infos = ''
-			for key, val in tag:
+			for key, val in tag.items():
 				infos += '{}: {}\n'.format(key, val)
 			self.tagInfo.set(infos)
 
