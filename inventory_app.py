@@ -85,7 +85,7 @@ class InventoryApp(object):
 		scrollbar.config(command=self.tagsDetected.yview)
 		scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 		self.tagsDetected.pack(fill=tk.BOTH, expand=True)
-		self.tagsDetected.bind('<Button-1>', self.selectTag)
+		self.tagsDetected.bind('<ButtonRelease-1>', self.selectTag)
 		
 		# make the selected tags info panel
 		taginfo = tk.Frame(self.root)
