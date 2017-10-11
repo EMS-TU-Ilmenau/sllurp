@@ -125,7 +125,15 @@ class InventoryApp(object):
 				searchmode=self.searchmode.get(), 
 				population=self.population.get())
 			# get number of tags
-			self.tagsHeader.set('{} Tags detected'.format(len(self.tags)))
+			def uniqueTags(trp):
+				epcs = []
+				for tag in trp:
+					epc = tag['EPC-96']
+					if epc not in epcs:
+						epcs.append(epc)
+				return epcs
+			
+			self.tagsHeader.set('{} Tags ({} unique)'.format(len(self.tags), len(uniqueTags(self.tags))))
 			# insert found tags
 			self.tagsDetected.delete(0, tk.END) # clear list
 			for tag in self.tags:
