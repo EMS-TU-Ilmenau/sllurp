@@ -114,47 +114,49 @@ class InventoryApp(object):
 			self.btnInventory.config(state=tk.DISABLED)
 	
 	def inventory(self):
-		if self.reader:
-			# inventory with settings
-			self.tags = self.reader.detectTags(
-				powerDBm=self.power.get(), 
-				freqMHz=self.freq.get(), 
-				duration=self.duration.get(), 
-				mode=self.presetmode.get(), 
-				session=self.session.get(), 
-				searchmode=self.searchmode.get(), 
-				population=self.population.get())
-			# get number of tags
-			def uniqueTags(trp):
-				epcs = []
-				for tag in trp:
-					epc = tag['EPC-96']
-					if epc not in epcs:
-						epcs.append(epc)
-				return epcs
-			
-			self.tagsHeader.set('{} Tags ({} unique)'.format(len(self.tags), len(uniqueTags(self.tags))))
-			# insert found tags
-			self.tagsDetected.delete(0, tk.END) # clear list
-			for tag in self.tags:
-				rssi = tag.get('RSSI', tag.get('PeakRSSI'))
-				# make indicator for RSSI
-				if rssi >= -40:
-					stars = '*****'
-				elif rssi >= -50:
-					stars = '****'
-				elif rssi >= -60:
-					stars = '***'
-				elif rssi >= -70:
-					stars = '**'
-				else:
-					stars = '*'
-				sigRange = range(-80, -40, 10)
-				# get last 3 digits of Tag ID
-				epc = tag.get('EPC-96', '0000')
-				id = int(epc[-2:], 16)
-				# insert line with EPC, ID and RSSI
-				self.tagsDetected.insert(tk.END, '{} (...{}) | {}'.format(epc, id, stars))
+		self.tagsHeader.set('')
+		self.tagsDetected.delete(0, tk.END) # clear list
+		if not self.reader:
+			return
+		# inventory with settings
+		self.tags = self.reader.detectTags(
+			powerDBm=self.power.get(), 
+			freqMHz=self.freq.get(), 
+			duration=self.duration.get(), 
+			mode=self.presetmode.get(), 
+			session=self.session.get(), 
+			searchmode=self.searchmode.get(), 
+			population=self.population.get())
+		# get number of tags
+		def uniqueTags(trp):
+			epcs = []
+			for tag in trp:
+				epc = tag['EPC-96']
+				if epc not in epcs:
+					epcs.append(epc)
+			return epcs
+		
+		self.tagsHeader.set('{} Tags ({} unique)'.format(len(self.tags), len(uniqueTags(self.tags))))
+		# insert found tags
+		for tag in self.tags:
+			rssi = tag.get('RSSI', tag.get('PeakRSSI'))
+			# make indicator for RSSI
+			if rssi >= -40:
+				stars = '*****'
+			elif rssi >= -50:
+				stars = '****'
+			elif rssi >= -60:
+				stars = '***'
+			elif rssi >= -70:
+				stars = '**'
+			else:
+				stars = '*'
+			sigRange = range(-80, -40, 10)
+			# get last 3 digits of Tag ID
+			epc = tag.get('EPC-96', '0000')
+			id = int(epc[-2:], 16)
+			# insert line with EPC, ID and RSSI
+			self.tagsDetected.insert(tk.END, '{} (...{}) | {}'.format(epc, id, stars))
 	
 	def selectTag(self, event):
 		if self.reader:
