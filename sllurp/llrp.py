@@ -498,12 +498,12 @@ class LLRPClient(object):
 	
 	def readLLRPMessage(self, msgName=None):
 		'''Reads incoming data from the reader until a specified message.'''
-		self.lastReceivedMsg = None
+		self.lastReceivedMsg = {}
 		# receive data
 		self.rawDataReceived(self.transport.read())
 		if msgName:
 			# wait until expected message received
-			while self.lastReceivedMsg is None or self.lastReceivedMsg.getName() != msgName:
+			while self.lastReceivedMsg.getName() != msgName:
 				self.rawDataReceived(self.transport.read())
 		else:
 			msgName = self.lastReceivedMsg.getName()
