@@ -500,7 +500,12 @@ class LLRPClient(object):
 		'''Reads incoming data from the reader until a specified message.'''
 		self.lastReceivedMsg = {}
 		# receive data
-		self.rawDataReceived(self.transport.read())
+		noResp = 0
+		while not hasattr(self.lastReceivedMsg, 'getName'):
+			self.rawDataReceived(self.transport.read())
+			if noResp > 5:
+				raise LLRPError('No data to receive')
+			noResp += 1
 		if msgName:
 			# wait until expected message received
 			while self.lastReceivedMsg.getName() != msgName:
