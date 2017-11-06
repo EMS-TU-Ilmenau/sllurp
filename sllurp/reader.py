@@ -84,7 +84,10 @@ class R420_EU(llrp.LLRPClient):
 			except:
 				break
 		# stop
-		self.stopPolitely()
+		try:
+			self.stopPolitely()
+		except:
+			pass
 		
 		# return results
 		if rounds == 1:
