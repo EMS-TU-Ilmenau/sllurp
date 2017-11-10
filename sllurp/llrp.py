@@ -251,9 +251,9 @@ class LLRPClient(object):
 		logger.debug('power_table: %s', self.power_table)
 		# check for valid power index
 		maxPower = self.power_table.index(max(self.power_table))
-		if self.power > maxPower or self.power <= 0:
+		if self.power > maxPower or self.power < 0:
 			self.power = maxPower
-			logger.info('Wrong power index specified. Setting to max power')
+			logger.info('Wrong power index %d specified. Setting to max power', self.power)
 		
 		# parse modes
 		regcap = capdict['RegulatoryCapabilities']
@@ -279,7 +279,7 @@ class LLRPClient(object):
 			logger.info('Using default mode (index 0)')
 			self.reader_mode = modes[0]
 
-		logger.info('using reader mode: %s', self.reader_mode)
+		logger.debug('using reader mode: %s', self.reader_mode)
 	
 	def getCapabilities(self):
 		'''Requests reader capabilities and parses them to 
