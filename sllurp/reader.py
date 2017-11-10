@@ -79,15 +79,9 @@ class R420_EU(llrp.LLRPClient):
 		self.startInventory()
 		# wait for tagreport(s)
 		while self.round < rounds:
-			try:
-				self.readLLRPMessage('RO_ACCESS_REPORT')
-			except:
-				break
+			self.readLLRPMessage('RO_ACCESS_REPORT')
 		# stop
-		try:
-			self.stopPolitely()
-		except:
-			pass
+		self.stopPolitely()
 		
 		# return results
 		if rounds == 1:

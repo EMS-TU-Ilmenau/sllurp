@@ -350,7 +350,7 @@ class LLRPClient(object):
 				status = msgDict['LLRPStatus']['StatusCode']
 				err = msgDict['LLRPStatus']['ErrorDescription']
 				logger.fatal('Error %s in %s: %s', status, msgName, err)
-			raise LLRPError('Last message was not successful. See log for details.')
+			raise LLRPError('Message %s was not successful. See log for details.', msgName)
 		
 		# keepalives can occur at any time
 		if msgName == 'KEEPALIVE':
@@ -382,15 +382,12 @@ class LLRPClient(object):
 		while data:
 			# parse the message header to grab its length
 			if len(data) >= LLRPMessage.full_hdr_len:
-				msg_type, msg_len, message_id = \
-					struct.unpack(LLRPMessage.full_hdr_fmt,
-								  data[:LLRPMessage.full_hdr_len])
+				msg_type, msg_len, message_id = struct.unpack(
+					LLRPMessage.full_hdr_fmt, data[:LLRPMessage.full_hdr_len])
 			else:
-				logger.warning('Too few bytes (%d) to unpack message header',
-							   len(data))
+				logger.warning('Too few bytes (%d) to unpack message header', len(data))
 				self.partialData = data
-				self.expectingRemainingBytes = \
-					LLRPMessage.full_hdr_len - len(data)
+				self.expectingRemainingBytes = LLRPMessage.full_hdr_len - len(data)
 				break
 			
 			logger.debug('expect %d bytes (have %d)', msg_len, len(data))
@@ -399,19 +396,15 @@ class LLRPClient(object):
 				# got too few bytes
 				self.partialData = data
 				self.expectingRemainingBytes = msg_len - len(data)
+				logger.debug('Too few bytes (%d) received to unpack message at once. '
+					'(%d) remaining bytes', len(data), self.expectingRemainingBytes)
 				break
 			else:
 				# got at least the right number of bytes
 				self.expectingRemainingBytes = 0
-				try:
-					lmsg = LLRPMessage(msgbytes=data[:msg_len])
-					self.handleMessage(lmsg)
-					data = data[msg_len:]
-				except LLRPError:
-					logger.exception('Failed to decode LLRPMessage; '
-									 'will not decode %d remaining bytes',
-									 len(data))
-					break
+				lmsg = LLRPMessage(msgbytes=data[:msg_len])
+				self.handleMessage(lmsg)
+				data = data[msg_len:]
 	
 	def send_KEEPALIVE_ACK(self):
 		self.sendLLRPMessage(LLRPMessage(msgdict={
@@ -499,13 +492,14 @@ class LLRPClient(object):
 	def readLLRPMessage(self, msgName=None):
 		'''Reads incoming data from the reader until a specified message.'''
 		self.lastReceivedMsg = {}
+		
 		# receive data
-		noResp = 0
-		while not hasattr(self.lastReceivedMsg, 'getName'):
+		self.rawDataReceived(self.transport.read())
+		while self.expectingRemainingBytes:
 			self.rawDataReceived(self.transport.read())
-			if noResp > 5:
-				raise LLRPError('No data to receive')
-			noResp += 1
+		if not hasattr(self.lastReceivedMsg, 'getName'):
+			raise LLRPError('Could not decode llrp message from reader')
+		
 		if msgName:
 			# wait until expected message received
 			while self.lastReceivedMsg.getName() != msgName:
