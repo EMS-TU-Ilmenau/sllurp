@@ -102,7 +102,7 @@ class R420_EU(llrp.LLRPClient):
 		'''search nearest matching power in table
 		:param powDBm: power in dBm
 		:returns: table index'''
-		return nearestIndex(self.power_table, powDBm)
+		return nearestIndex(self.power_table, powDBm)+1
 	
 	def getChannelIndex(self, freqMHz):
 		'''search nearest matching channel in table

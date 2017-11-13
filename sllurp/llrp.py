@@ -250,7 +250,7 @@ class LLRPClient(object):
 		self.power_table = self.parsePowerTable(bandcap)
 		logger.debug('power_table: %s', self.power_table)
 		# check for valid power index
-		maxPower = self.power_table.index(max(self.power_table))
+		maxPower = self.power_table.index(max(self.power_table))+1
 		if self.power > maxPower or self.power < 0:
 			self.power = maxPower
 			logger.info('Wrong power index %d specified. Setting to max power', self.power)
@@ -475,13 +475,13 @@ class LLRPClient(object):
 		'''Parse the transmit power table.
 		:param uhfbandcap: Capability dictionary from
 			self.capabilities['RegulatoryCapabilities']['UHFBandCapabilities']
-		:returns: list of [0, dBm value, dBm value, ...]
+		:returns: list of dBm values
 		'''
 		bandtbl = {k: v for k, v in uhfbandcap.items()
 				   if k.startswith('TransmitPowerLevelTableEntry')}
-		power_table = [0] * (len(bandtbl) + 1)
+		power_table = [0]*len(bandtbl)
 		for v in bandtbl.values():
-			idx = v['Index']
+			idx = v['Index']-1 # index starts with 1 in the reader power table
 			power_table[idx] = int(v['TransmitPowerValue']) / 100.0
 		
 		return power_table
