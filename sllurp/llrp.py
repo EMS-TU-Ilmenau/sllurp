@@ -1,12 +1,10 @@
 from __future__ import print_function
 from collections import defaultdict
-import time
 import logging
 import pprint
 import struct
 from llrp_proto import LLRPROSpec, LLRPError, Message_struct, \
-	Message_Type2Name, Capability_Name2Type, AirProtocol, \
-	llrp_data2xml, LLRPMessageDict, Modulation_Name2Type, \
+	Message_Type2Name, Capability_Name2Type, llrp_data2xml, LLRPMessageDict, \
 	ReaderConfigurationError, EXT_TYPE
 from binascii import hexlify
 from util import BITMASK
@@ -229,6 +227,10 @@ class LLRPClient(object):
 		specified message from the reader.
 		The function gets called with the message dictionary as argument.'''
 		self.msgCallbacks[msg].append(cb)
+	
+	def removeMsgCallback(self, msg, cb):
+		'''Removes a function callback added in "addMsgCallback"'''
+		self.msgCallbacks[msg].remove(cb)
 	
 	def parseCapabilities(self, capdict):
 		'''Parse a capabilities dictionary and adjust instance settings.
