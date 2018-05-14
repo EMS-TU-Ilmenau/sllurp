@@ -1,5 +1,6 @@
-from . import llrp # low level reader protocoll
+from .llrp import LLRPClient # low level reader protocoll
 import numpy as np # for building tx power table and searching in tables
+import threading # for making live tag reports non-blocking
 
 '''
 Classes for specific reader implementations
@@ -8,27 +9,51 @@ Classes for specific reader implementations
 '''search for a value in an array and return index for best match'''
 nearestIndex = lambda a, v: (np.abs(np.asarray(a)-v)).argmin()
 
-class R420_EU(llrp.LLRPClient):
+class R420_EU(LLRPClient):
 	def __init__(self, ip='192.168.4.2', *args, **kwargs):
-		self.detectedTags = []
-		self.round = 0
-		self.rounds = 1
+		''':param ip: IP address of the reader
+		'''
 		# hard codes frequency channels for ETSI EN 302-208 v1.4.1
 		# getting actual frequency table (from device config) is not implemented in sllurp
 		self.freq_table = [865.7, 866.3, 866.9, 867.5]
 		
 		# init common llrp stuff
-		super(R420_EU, self).__init__(ip, *args, **kwargs)
+		LLRPClient.__init__(self, ip, *args, **kwargs)
 		
-		# we want to get informed when tags are reported
-		self.addMsgCallback('RO_ACCESS_REPORT', self.foundTags)
+		# select what data we want to get from the reader
+		self.report_selection = {
+			'EnableROSpecID': False,
+			'EnableSpecIndex': False,
+			'EnableInventoryParameterSpecID': False,
+			'EnableAntennaID': True,
+			'EnableChannelIndex': True,
+			'EnablePeakRRSI': True,
+			'EnableFirstSeenTimestamp': True,
+			'EnableLastSeenTimestamp': True,
+			'EnableTagSeenCount': True,
+			'EnableAccessSpecID': False}
+		self.impinj_report_selection = {
+			'ImpinjEnablePeakRSSI': True,
+			'ImpinjEnableRFPhaseAngle': True}
 		
 		# connect to reader
 		self.startConnection()
 		self.enableImpinjFeatures()
 		print('Connected to reader')
-		
-	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, rounds=1, **kwargs):
+	
+	def getPowerIndex(self, powDBm):
+		'''search nearest matching power in table
+		:param powDBm: power in dBm
+		:returns: table index'''
+		return nearestIndex(self.power_table, powDBm)+1
+	
+	def getChannelIndex(self, freqMHz):
+		'''search nearest matching channel in table
+		:param freqMHz: frequency in MHz
+		:returns: table index'''
+		return nearestIndex(self.freq_table, freqMHz)+1
+	
+	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, rounds=1):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
@@ -53,21 +78,6 @@ class R420_EU(llrp.LLRPClient):
 		self.impinj_searchmode = searchmode
 		self.session = session
 		self.population = population
-		self.report_selection = {
-			'EnableROSpecID': False,
-			'EnableSpecIndex': False,
-			'EnableInventoryParameterSpecID': False,
-			'EnableAntennaID': True,
-			'EnableChannelIndex': True,
-			'EnablePeakRRSI': True,
-			'EnableFirstSeenTimestamp': True,
-			'EnableLastSeenTimestamp': True,
-			'EnableTagSeenCount': True,
-			'EnableAccessSpecID': False}
-		self.impinj_report_selection = {
-			'ImpinjEnablePeakRSSI': True,
-			'ImpinjEnableRFPhaseAngle': True}
-		
 		# check settings against capabilities
 		self.parseCapabilities(self.capabilities)
 		
@@ -75,12 +85,18 @@ class R420_EU(llrp.LLRPClient):
 		self.rounds = rounds
 		self.round = 0
 		self.detectedTags = []
+		# we want to get informed when tags are reported
+		self.addMsgCallback('RO_ACCESS_REPORT', self.foundTags)
+		
 		# start inventory
 		self.startInventory()
 		# wait for tagreport(s)
 		while self.round < rounds:
 			self.readLLRPMessage('RO_ACCESS_REPORT')
-		# stop
+		
+		# don't need more reports
+		self.removeMsgCallback('RO_ACCESS_REPORT', self.foundTags)
+		# stop inventoring
 		self.stopPolitely()
 		
 		# return results
@@ -91,31 +107,72 @@ class R420_EU(llrp.LLRPClient):
 	
 	def foundTags(self, msgdict):
 		'''report about found tags'''
-		if self.round >= self.rounds:
-			return
 		tags = msgdict['TagReportData'] or []
 		self.detectedTags.append(tags) # save tag list
-		print('{} tags detected'.format(len(tags)))
+		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
 	
-	def getPowerIndex(self, powDBm):
-		'''search nearest matching power in table
-		:param powDBm: power in dBm
-		:returns: table index'''
-		return nearestIndex(self.power_table, powDBm)+1
+	def startLiveReports(self, reportCallback, powerDBm=31.5, freqMHz=866.9, duration=1.0, mode=1002, session=2, searchmode=0, population=1):
+		'''starts the readers inventoring process and 
+		reports tagreports periodically through a callback function.
+		
+		:param reportCallback: call back function which is called every 
+			"duration" seconds with the tagreport as argument
+		the other parameters are the same as in "detectTags"
+		'''
+		# update settings
+		self.report_interval = duration
+		self.power = self.getPowerIndex(powerDBm)
+		self.channel = self.getChannelIndex(freqMHz)
+		self.mode_identifier = mode
+		self.impinj_searchmode = searchmode
+		self.session = session
+		self.population = population
+		# check settings against capabilities
+		self.parseCapabilities(self.capabilities)
+		
+		# we want to get informed when tags are reported
+		self._liveReport = reportCallback
+		self.addMsgCallback('RO_ACCESS_REPORT', self._foundTagsLive)
+		
+		# continue non-blocking
+		self._liveStop = threading.Event()
+		self._liveThread = threading.Thread(target=self._liveInventory, args=(self._liveStop))
+		self._liveThread.start()
 	
-	def getChannelIndex(self, freqMHz):
-		'''search nearest matching channel in table
-		:param freqMHz: frequency in MHz
-		:returns: table index'''
-		return nearestIndex(self.freq_table, freqMHz)+1
+	def stopLiveReports(self):
+		'''stops the live inventoring'''
+		try:
+			self._liveStop.set()
+		except:
+			pass
 	
-	def reportTags(self, tags):
-		'''prints out informations about tags found
-		:param tags: array containing dictionary of tag meta infos'''
-		print('\n\tReport for {} tags:\n'.format(len(tags)))
-		# cycle through tags and list their stats (enabled by tag_content_selector)
+	def _liveInventory(self, stopper):
+		'''non-blocking inventory'''
+		# start inventory
+		self.startInventory()
+		
+		# read all tag report messages until user stops
+		while not stopper.is_set():
+			self.readLLRPMessage('RO_ACCESS_REPORT')
+		
+		# don't need more reports
+		self.removeMsgCallback('RO_ACCESS_REPORT', self._foundTagsLive)
+		# stop inventoring
+		self.stopPolitely()		
+	
+	def _foundTagsLive(self, msgdict):
+		tags = msgdict['TagReportData'] or []
+		self._liveReport(tags)
+	
+	def uniqueTags(self, tags):
+		'''gets unique tags of a tagreport
+		:param tags: array containing dictionary of tag meta infos
+		:returns: list of unique EPCs'''
+		epcs = []
 		for tag in tags:
-			for k, v in tag.items():
-				print('{}: {}'.format(k, v))
-			print('')
+			epc = tag['EPC-96']
+			if epc not in epcs:
+				epcs.append(epc)
+		
+		return epcs
