@@ -137,7 +137,7 @@ class R420_EU(LLRPClient):
 		
 		# continue non-blocking
 		self._liveStop = threading.Event()
-		self._liveThread = threading.Thread(target=self._liveInventory, args=(self._liveStop))
+		self._liveThread = threading.Thread(target=self._liveInventory, args=(self._liveStop,))
 		self._liveThread.start()
 	
 	def stopLiveReports(self):
