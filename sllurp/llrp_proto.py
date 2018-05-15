@@ -29,7 +29,7 @@ from collections import defaultdict
 from binascii import hexlify
 from util import BIT, BITMASK, func, reverse_dict
 import llrp_decoder
-from llrp_errors import LLRPError
+from llrp_errors import LLRPError, ReaderConfigurationError
 
 #
 # Define exported symbols
