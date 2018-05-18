@@ -171,7 +171,7 @@ class R420_EU(LLRPClient):
 		:returns: list of unique EPCs'''
 		epcs = []
 		for tag in tags:
-			epc = tag.get('EPC-96', tag['EPCData']['EPC'])
+			epc = tag['EPC-96'] if 'EPC-96' in tag else tag['EPCData']['EPC']
 			if epc not in epcs:
 				epcs.append(epc)
 		
