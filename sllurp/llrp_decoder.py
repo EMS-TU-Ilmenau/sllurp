@@ -1,7 +1,7 @@
 import struct
 import logging
-import llrp_proto
-from util import BITMASK
+from . import llrp_proto
+from .util import BITMASK
 
 logger = logging.getLogger(__name__)
 

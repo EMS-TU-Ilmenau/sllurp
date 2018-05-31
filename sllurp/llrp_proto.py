@@ -27,9 +27,9 @@ import logging
 import struct
 from collections import defaultdict
 from binascii import hexlify
-from util import BIT, BITMASK, func, reverse_dict
-import llrp_decoder
-from llrp_errors import LLRPError, ReaderConfigurationError
+from .util import BIT, BITMASK, func, reverse_dict
+from . import llrp_decoder
+from .llrp_errors import LLRPError, ReaderConfigurationError
 
 #
 # Define exported symbols
@@ -522,13 +522,7 @@ def decode_ROAccessReport(data):
 	# Decode parameters
 	msg['TagReportData'] = []
 	while True:
-		try:
-			ret, data = decode('TagReportData')(data)
-		except TypeError:  # XXX
-			logger.error('Unable to decode TagReportData')
-			break
-		# print('len(ret) = {}'.format(len(ret)))
-		# print('len(data) = {}'.format(len(data)))
+		ret, data = decode('TagReportData')(data)
 		if ret:
 			msg['TagReportData'].append(ret)
 		else:
@@ -1906,7 +1900,7 @@ def encode_ROSpecStartTrigger(par):
 	msg_header = '!HHB'
 	msg_header_len = struct.calcsize(msg_header)
 	
-	data = ''
+	data = bytes()
 	if par['ROSpecStartTriggerType'] == 'Periodic':
 		data += encode('PeriodicTriggerValue')(par['PeriodicTriggerValue'])
 	elif par['ROSpecStartTriggerType'] == 'GPI':
@@ -1966,7 +1960,7 @@ def encode_ROSpecStopTrigger(par):
 	msg_header = '!HHBI'
 	msg_header_len = struct.calcsize(msg_header)
 	
-	data = ''
+	data = bytes()
 	
 	data = struct.pack(msg_header, msgtype,
 					len(data) + msg_header_len,
@@ -1993,7 +1987,7 @@ def encode_AISpec(par):
 	
 	msg_header = '!HHH'
 	msg_header_len = struct.calcsize(msg_header)
-	data = ''
+	data = bytes()
 	
 	antid = par['AntennaIDs']
 	antennas = []
@@ -2623,7 +2617,7 @@ def decode_EPCData(data):
 	# Decode fields
 	(par['EPCLengthBits'], ) = struct.unpack('!H',
 											body[0:struct.calcsize('!H')])
-	par['EPC'] = body[struct.calcsize('!H'):].encode('hex')
+	par['EPC'] = hexlify(body[struct.calcsize('!H'):])
 	
 	return par, data[length:]
 
@@ -2651,12 +2645,12 @@ def decode_EPC96(data):
 	msgtype = msgtype & BITMASK(7)
 	if msgtype != Message_struct['EPC-96']['type']:
 		return (None, data)
-	length = tve_header_len + (96 / 8)
+	length = tve_header_len + int(96 / 8)
 	body = data[tve_header_len:length]
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	par['EPC'] = body.encode('hex')
+	par['EPC'] = hexlify(body)
 	
 	return par, data[length:]
 
@@ -3022,7 +3016,7 @@ def encode_ImpinjTagReportContentSelector(par):
 	
 	msg_header = '!HHII'
 	
-	data = ''
+	data = bytes()
 	for field in Message_struct['ImpinjTagReportContentSelector']['fields']:
 		# encode each parameter
 		data += encode(field)(field in par and par[field])
@@ -3139,7 +3133,7 @@ def llrp_data2xml(msg):
 	
 		return str
 	
-	ans = ''
+	ans = bytes()
 	for p in msg:
 		ans += __llrp_data2xml(msg[p], p)
 	return ans[:-1]

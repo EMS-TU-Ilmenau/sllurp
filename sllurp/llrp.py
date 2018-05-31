@@ -3,11 +3,11 @@ from collections import defaultdict
 import logging
 import pprint
 import struct
-from llrp_proto import LLRPROSpec, LLRPError, Message_struct, \
+from .llrp_proto import LLRPROSpec, LLRPError, Message_struct, \
 	Message_Type2Name, Capability_Name2Type, llrp_data2xml, LLRPMessageDict, \
 	ReaderConfigurationError, EXT_TYPE
 from binascii import hexlify
-from util import BITMASK
+from .util import BITMASK
 import socket # for connecting to the reader via TCP/IP
 
 LLRP_PORT = 5084
@@ -39,7 +39,7 @@ class LLRPMessage(object):
 		'''Turns the msg dictionary into a sequence of bytes'''
 		if self.msgdict is None:
 			raise LLRPError('No message dict to serialize.')
-		name = self.msgdict.keys()[0]
+		name = list(self.msgdict.keys())[0]
 		logger.debug('serializing %s command', name)
 		ver = self.msgdict[name]['Ver'] & BITMASK(3)
 		msgtype = self.msgdict[name]['Type'] & BITMASK(10)
@@ -61,7 +61,7 @@ class LLRPMessage(object):
 		'''Turns a sequence of bytes into a message dictionary.'''
 		if self.msgbytes is None:
 			raise LLRPError('No message bytes to deserialize.')
-		data = ''.join(self.msgbytes)
+		data = self.msgbytes
 		msgtype, length, msgid = struct.unpack(self.full_hdr_fmt,
 											   data[:self.full_hdr_len])
 		ver = (msgtype >> 10) & BITMASK(3)
@@ -120,7 +120,7 @@ class LLRPMessage(object):
 	def getName(self):
 		if not self.msgdict:
 			return None
-		return self.msgdict.keys()[0]
+		return list(self.msgdict.keys())[0]
 
 	def __repr__(self):
 		try:
@@ -367,8 +367,7 @@ class LLRPClient(object):
 	def rawDataReceived(self, data):
 		'''Receives binary data from the reader. In normal cases, we can parse 
 		the message according to the protocoll and return it as a dictionary.'''
-		logger.debug('got %d bytes from reader: %s', len(data),
-					 data.encode('hex'))
+		logger.debug('got %d bytes from reader: %s', len(data), hexlify(data))
 		
 		if self.expectingRemainingBytes:
 			if len(data) >= self.expectingRemainingBytes:
