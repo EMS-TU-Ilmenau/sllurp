@@ -1,5 +1,8 @@
 #!/bin/bash
-import Tkinter as tk # for building the gui
+try:
+	import Tkinter as tk # for building the gui - Python 2
+except ImportError:
+	import tkinter as tk # for building the gui - # Python 3
 from sllurp.reader import R420_EU # for controlling the reader
 
 class InventoryApp(object):
