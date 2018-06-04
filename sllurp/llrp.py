@@ -144,7 +144,8 @@ class Transport:
 	def write(self, msg):
 		self.sock.sendall(msg)
 	
-	def read(self):
+	def read(self, timeout=None):
+		self.sock.settimeout(timeout)
 		return self.sock.recv(4096)
 	
 	def disconnect(self):
@@ -154,7 +155,7 @@ class Transport:
 class LLRPClient(object):
 	
 	def __init__(self, ip, antennas=(0,), power=0, channel=1, 
-				report_interval=0.1, report_every_n_tags=None, report_timeout=5,
+				report_interval=0.1, report_every_n_tags=None, report_timeout=10.,
 				report_selection={}, impinj_report_selection={},
 				mode_index=None, mode_identifier=3, tari=None, 
 				session=2, population=1, impinj_searchmode=0):
@@ -199,6 +200,10 @@ class LLRPClient(object):
 		self.rospec = None
 		
 		self.msgCallbacks = defaultdict(list)
+	
+	def reportTimeout(self):
+		''':returns: timeout for tag reports'''
+		return self.report_timeout if self.report_every_n_tags else max(5., self.report_interval+1.)
 	
 	def startConnection(self):
 		# connect
@@ -495,16 +500,16 @@ class LLRPClient(object):
 		self.lastReceivedMsg = {}
 		
 		# receive data
-		self.rawDataReceived(self.transport.read())
+		self.rawDataReceived(self.transport.read(self.reportTimeout()))
 		while self.expectingRemainingBytes:
-			self.rawDataReceived(self.transport.read())
+			self.rawDataReceived(self.transport.read(self.reportTimeout()))
 		if not hasattr(self.lastReceivedMsg, 'getName'):
 			raise LLRPError('Could not decode llrp message from reader')
 		
 		if msgName:
 			# wait until expected message received
 			while self.lastReceivedMsg.getName() != msgName:
-				self.rawDataReceived(self.transport.read())
+				self.rawDataReceived(self.transport.read(self.reportTimeout()))
 		else:
 			msgName = self.lastReceivedMsg.getName()
 		return self.lastReceivedMsg.msgdict[msgName]
