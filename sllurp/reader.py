@@ -10,9 +10,17 @@ Classes for specific reader implementations
 nearestIndex = lambda a, v: (np.abs(np.asarray(a)-v)).argmin()
 
 class R420_EU(LLRPClient):
-	def __init__(self, ip='192.168.4.2', *args, **kwargs):
+	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
 		''':param ip: IP address of the reader
+		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.
+			Other tags will not be reported when used.
+		:param excludeEPCs: string or list of strings containing EPCs to ignore during inventory.
+			Tags with these EPCs will not be reported when used.
 		'''
+		# epc filters
+		self.includeEPCs = includeEPCs
+		self.excludeEPCs = excludeEPCs
+		
 		# hard codes frequency channels for ETSI EN 302-208 v1.4.1
 		# getting actual frequency table (from device config) is not implemented in sllurp
 		self.freq_table = [865.7, 866.3, 866.9, 867.5]
@@ -52,6 +60,20 @@ class R420_EU(LLRPClient):
 		:param freqMHz: frequency in MHz
 		:returns: table index'''
 		return nearestIndex(self.freq_table, freqMHz)+1
+	
+	def filterTags(self, trp):
+		'''Filters tags based on the EPC filters specified on construction
+		:param trp: tagreport
+		:returns: filtered tagreport'''
+		if self.includeEPCs:
+			# include tags in filter
+			return [tag for tag in trp if self.getEPC(tag) in self.includeEPCs]
+		elif self.excludeEPCs:
+			# exclude tags in filter
+			return [tag for tag in trp if self.getEPC(tag) not in self.excludeEPCs]
+		else:
+			# nothing to filter
+			return trp
 	
 	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, rounds=1):
 		'''starts the readers inventoring process and return the found tags.
@@ -108,6 +130,7 @@ class R420_EU(LLRPClient):
 	def foundTags(self, msgdict):
 		'''report about found tags'''
 		tags = msgdict['TagReportData'] or []
+		tags = self.filterTags(tags) # filter tags
 		self.detectedTags.append(tags) # save tag list
 		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
@@ -163,15 +186,22 @@ class R420_EU(LLRPClient):
 	
 	def _foundTagsLive(self, msgdict):
 		tags = msgdict['TagReportData'] or []
+		tags = self.filterTags(tags) # filter tags
 		self._liveReport(tags)
+	
+	def getEPC(tag):
+		''':param tag: single tag dictionary of a tagreport
+		:returns: EPC string'''
+		epc = tag['EPC-96'] if 'EPC-96' in tag else tag['EPCData']['EPC']
+		return str(epc)
 	
 	def uniqueTags(self, tags):
 		'''gets unique tags of a tagreport
 		:param tags: array containing dictionary of tag meta infos
-		:returns: list of unique EPCs'''
+		:returns: list of unique EPC strings'''
 		epcs = []
 		for tag in tags:
-			epc = tag['EPC-96'] if 'EPC-96' in tag else tag['EPCData']['EPC']
+			epc = self.getEPC(tag)
 			if epc not in epcs:
 				epcs.append(epc)
 		
