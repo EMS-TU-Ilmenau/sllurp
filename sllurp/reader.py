@@ -189,7 +189,7 @@ class R420_EU(LLRPClient):
 		tags = self.filterTags(tags) # filter tags
 		self._liveReport(tags)
 	
-	def getEPC(tag):
+	def getEPC(self, tag):
 		''':param tag: single tag dictionary of a tagreport
 		:returns: EPC string'''
 		epc = tag['EPC-96'] if 'EPC-96' in tag else tag['EPCData']['EPC']
