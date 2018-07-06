@@ -1,13 +1,29 @@
 from .llrp import LLRPClient # low level reader protocoll
-import numpy as np # for building tx power table and searching in tables
 import threading # for making live tag reports non-blocking
 
 '''
 Classes for specific reader implementations
 '''
 
-'''search for a value in an array and return index for best match'''
-nearestIndex = lambda a, v: (np.abs(np.asarray(a)-v)).argmin()
+def nearestIndex(arr, val):
+	'''
+	Searches for a value in an array and return index for best match
+	:param arr: array with values (int / float)
+	:param val: int or float value to search for in the array
+	:returns: index for best match of value in array
+	'''
+	smallestDiff = 2**64-1
+	iMatch = 0
+	for iArr, vArr in enumerate(arr):
+		# compare array value and val
+		diff = abs(vArr-val)
+		if diff < smallestDiff:
+			# found smaller difference, so remember
+			iMatch = iArr
+			smallestDiff = diff
+	
+	return iMatch
+			
 
 class R420_EU(LLRPClient):
 	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
