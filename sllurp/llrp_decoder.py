@@ -99,7 +99,3 @@ def decode_impinj_parameter(data):
 		return {param_name: param_calc(unpacked)}, end
 	except struct.error:
 		return None, 0
-
-
-def decode_parameter(data):
-	"""Decode a single parameter."""

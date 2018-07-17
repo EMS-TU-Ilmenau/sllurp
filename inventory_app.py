@@ -154,7 +154,6 @@ class InventoryApp(object):
 				stars = '**'
 			else:
 				stars = '*'
-			sigRange = range(-80, -40, 10)
 			# get last 3 digits of Tag ID
 			epc = tag.get('EPC-96', '0000')
 			id = int(epc[-2:], 16)
