@@ -16,7 +16,7 @@ def read(filename):
 
 setup(
     name='sllurp',
-    version='0.3.5',
+    version='0.3.6',
     description='RFID reader control library',
     long_description=read('README.rst'),
     author='Ben Ransford',
@@ -29,7 +29,7 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 2.7',
     ],
     keywords='llrp rfid reader',
