@@ -60,37 +60,9 @@ def encode(data):
 
 
 def bin2dump(data, label=''):
-	def isprint(c):
-		return ord(c) >= 32 and ord(c) <= 126
-	
-	def conv(c):
-		if isprint(c):
-			return c
-		return '.'
-	
-	l = len(data)
-	if len(label) > 0:
-		str = label + '\n'
-	else:
-		str = ''
-	
-	p = 0
-	line = ' ' * 80
-	i = 0
-	while i < l:
-		num = '%02x' % struct.unpack('B', data[i])
-		line = line[: p * 3] + num + line[p * 3 + 2:]
-		line = line[:50 + p] + conv(data[i])
-	
-		p += 1
-		if p == 16:
-			str += line + '\n'
-			p = 0
-			line = ' ' * 80
-		i += 1
-	if p != 0:
-		str += line + '\n'
-	return str[:-1]
+	data = bytes(c for c in data if c >= 32 and c <= 127)
+	dataStr = data.decode('ascii')
+	return label+dataStr
 
 
 def dump(data, label):
@@ -580,8 +552,8 @@ def decode_ReaderEventNotification(data):
 		msg['ReaderEventNotificationData'] = ret
 	
 	# Check the end of the message
-		if len(body) > 0:
-			raise LLRPError('junk at end of message: ' + bin2dump(body))
+	if len(body) > 0:
+		raise LLRPError('junk at end of message: ' + bin2dump(body))
 	
 	return msg
 
