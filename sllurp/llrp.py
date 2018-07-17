@@ -20,12 +20,12 @@ class LLRPMessage(object):
 	full_hdr_fmt = hdr_fmt + 'I'
 	full_hdr_len = struct.calcsize(full_hdr_fmt)  # == 10 bytes
 
-	def __init__(self, msgdict=None, msgbytes=None):
+	def __init__(self, msgdict={}, msgbytes=b''):
 		if not (msgdict or msgbytes):
 			raise LLRPError(
 				'Provide either a message dict or a sequence of bytes.')
-		self.msgdict = None
-		self.msgbytes = None
+		self.msgdict = msgdict
+		self.msgbytes = msgbytes
 		if msgdict:
 			self.msgdict = LLRPMessageDict(msgdict)
 			if not msgbytes:
@@ -37,7 +37,7 @@ class LLRPMessage(object):
 
 	def serialize(self):
 		'''Turns the msg dictionary into a sequence of bytes'''
-		if self.msgdict is None:
+		if not self.msgdict:
 			raise LLRPError('No message dict to serialize.')
 		name = list(self.msgdict.keys())[0]
 		logger.debug('serializing %s command', name)
@@ -59,7 +59,7 @@ class LLRPMessage(object):
 
 	def deserialize(self):
 		'''Turns a sequence of bytes into a message dictionary.'''
-		if self.msgbytes is None:
+		if not self.msgbytes:
 			raise LLRPError('No message bytes to deserialize.')
 		data = self.msgbytes
 		msgtype, length, msgid = struct.unpack(self.full_hdr_fmt,
@@ -119,7 +119,7 @@ class LLRPMessage(object):
 
 	def getName(self):
 		if not self.msgdict:
-			return None
+			return ''
 		return list(self.msgdict.keys())[0]
 
 	def __repr__(self):
@@ -347,8 +347,12 @@ class LLRPClient(object):
 	
 	def handleMessage(self, lmsg):
 		'''Checks a LLRP message for common issues.'''
+		self.lastReceivedMsg = lmsg
 		logger.debug('LLRPMessage received: %s', lmsg)
 		msgName = lmsg.getName()
+		if not msgName:
+			logger.warning('Cannot handle unknown LLRP message')
+			return
 		msgDict = lmsg.msgdict[msgName]
 		
 		# check errors in the message
@@ -366,8 +370,6 @@ class LLRPClient(object):
 		# call registered callback functions
 		for fn in self.msgCallbacks[msgName]:
 			fn(msgDict)
-		
-		self.lastReceivedMsg = lmsg
 		
 	def rawDataReceived(self, data):
 		'''Receives binary data from the reader. In normal cases, we can parse 
