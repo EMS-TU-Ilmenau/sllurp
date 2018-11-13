@@ -209,7 +209,7 @@ class R420_EU(LLRPClient):
 		''':param tag: single tag dictionary of a tagreport
 		:returns: EPC string'''
 		epc = tag['EPC-96'] if 'EPC-96' in tag else tag['EPCData']['EPC']
-		return str(epc)
+		return epc.decode()
 	
 	def uniqueTags(self, tags):
 		'''gets unique tags of a tagreport
