@@ -121,6 +121,7 @@ class InventoryApp(object):
 		self.tagsDetected.delete(0, tk.END) # clear list
 		if not self.reader:
 			return
+		
 		# inventory with settings
 		self.tags = self.reader.detectTags(
 			powerDBm=self.power.get(), 
@@ -130,16 +131,8 @@ class InventoryApp(object):
 			session=self.session.get(), 
 			searchmode=self.searchmode.get(), 
 			population=self.population.get())
-		# get number of tags
-		def uniqueTags(trp):
-			epcs = []
-			for tag in trp:
-				epc = tag['EPC-96']
-				if epc not in epcs:
-					epcs.append(epc)
-			return epcs
 		
-		self.tagsHeader.set('{} Tags ({} unique)'.format(len(self.tags), len(uniqueTags(self.tags))))
+		self.tagsHeader.set('{} Tags ({} unique)'.format(len(self.tags), len(self.reader.uniqueTags(self.tags))))
 		# insert found tags
 		for tag in self.tags:
 			rssi = tag.get('RSSI', tag.get('PeakRSSI'))
