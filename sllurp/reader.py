@@ -91,7 +91,7 @@ class R420_EU(LLRPClient):
 			# nothing to filter
 			return trp
 	
-	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, rounds=1):
+	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, antennas=(0,), rounds=1):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
@@ -105,6 +105,8 @@ class R420_EU(LLRPClient):
 		:param searchmode: impinj specific muting mode
 			Valid values are 0 (not enabled), 1, 2, 3
 		:param population: number of tags estimated in the readers scope
+		:antennas: tuple of antenna ports to use for inventory.
+			Set to (0,) to scan automatically over all
 		:param rounds: number of tag reports until stopping inventoring
 		:returns: list of detected tags with their meta informations
 		'''
@@ -116,6 +118,7 @@ class R420_EU(LLRPClient):
 		self.impinj_searchmode = searchmode
 		self.session = session
 		self.population = population
+		self.antennas = antennas
 		# check settings against capabilities
 		self.parseCapabilities(self.capabilities)
 		
@@ -151,7 +154,7 @@ class R420_EU(LLRPClient):
 		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
 	
-	def startLiveReports(self, reportCallback, powerDBm=31.5, freqMHz=866.9, duration=1.0, mode=1002, session=2, searchmode=0, population=1):
+	def startLiveReports(self, reportCallback, powerDBm=31.5, freqMHz=866.9, duration=1.0, mode=1002, session=2, searchmode=0, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and 
 		reports tagreports periodically through a callback function.
 		
@@ -167,6 +170,7 @@ class R420_EU(LLRPClient):
 		self.impinj_searchmode = searchmode
 		self.session = session
 		self.population = population
+		self.antennas = antennas
 		# check settings against capabilities
 		self.parseCapabilities(self.capabilities)
 		
