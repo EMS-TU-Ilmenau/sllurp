@@ -37,12 +37,11 @@ class R420_EU(LLRPClient):
 		self.includeEPCs = includeEPCs
 		self.excludeEPCs = excludeEPCs
 		
-		# hard codes frequency channels for ETSI EN 302-208 v1.4.1
-		# getting actual frequency table (from device config) is not implemented in sllurp
-		self.freq_table = [865.7, 866.3, 866.9, 867.5]
-		
 		# init common llrp stuff
 		LLRPClient.__init__(self, ip, *args, **kwargs)
+		
+		# backup frequency table
+		self.freq_table = [865.7, 866.3, 866.9, 867.5]
 		
 		# select what data we want to get from the reader
 		self.report_selection = {

@@ -190,6 +190,7 @@ class LLRPClient(object):
 		self.transport = Transport()
 		self.capabilities = {}
 		self.power_table = []
+		self.freq_table = []
 		self.reader_mode = None
 		
 		self.expectingRemainingBytes = 0
@@ -209,7 +210,15 @@ class LLRPClient(object):
 		# connect
 		self.transport.connect(self.ip, LLRP_PORT)
 		# await connection message from reader
-		self.readLLRPMessage('READER_EVENT_NOTIFICATION')
+		try:
+			self.readLLRPMessage('READER_EVENT_NOTIFICATION')
+		except LLRPError:
+			# when the region is not set, we cannot access the reader
+			# to set the region, ssh root@<ip>, pw: "impinj" >show system region >config system region <region id>
+			self.disconnect()
+			raise
+		except TimeoutError:
+			pass # reader does not notify
 		
 		# get reader capabilities
 		self.getCapabilities()
@@ -261,6 +270,9 @@ class LLRPClient(object):
 		if self.power > maxPower or self.power < 0:
 			self.power = maxPower
 			logger.info('Wrong power index %d specified. Setting to max power', self.power)
+		
+		# parse available frequencies
+		self.freq_table = self.parseFreqTable(bandcap) or self.freq_table
 		
 		# parse modes
 		regcap = capdict['RegulatoryCapabilities']
@@ -493,6 +505,24 @@ class LLRPClient(object):
 			power_table[idx] = int(v['TransmitPowerValue']) / 100.0
 		
 		return power_table
+	
+	@staticmethod
+	def parseFreqTable(uhfbandcap):
+		'''Parse the frequency table.
+		:param uhfbandcap: Capability dictionary from
+			self.capabilities['RegulatoryCapabilities']['UHFBandCapabilities']
+		:returns: list of frequencies in MHz
+		'''
+		freqHopTable = uhfbandcap['FrequencyInformation'].get('FrequencyHopTable0')
+		if freqHopTable:
+			# get frequency values
+			freqs = [int(v[0])/1000. for k, v in freqHopTable.items() 
+				if k.startswith('Frequency')]
+			freqs.sort()
+			return freqs
+		else:
+			logger.warning('No frequency hop table to read')
+			return None
 	
 	def sendLLRPMessage(self, llrp_msg):
 		self.transport.write(llrp_msg.msgbytes)
