@@ -3084,7 +3084,7 @@ def llrp_data2xml(msg):
 	def __llrp_data2xml(msg, name, level=0):
 		tabs = '\t' * level
 	
-		str = tabs + '<%s>\n' % name
+		res = tabs + '<%s>\n' % name
 	
 		fields = Message_struct[name]['fields']
 		for p in fields:
@@ -3094,18 +3094,18 @@ def llrp_data2xml(msg):
 				continue
 	
 			if type(sub) is dict:
-				str += __llrp_data2xml(sub, p, level + 1)
+				res += __llrp_data2xml(sub, p, level + 1)
 			elif type(sub) is list and sub and type(sub[0]) is dict:
 				for e in sub:
-					str += __llrp_data2xml(e, p, level + 1)
+					res += __llrp_data2xml(e, p, level + 1)
 			else:
-				str += tabs + '\t<%s>%s</%s>\n' % (p, sub, p)
+				res += tabs + '\t<%s>%s</%s>\n' % (p, sub, p)
 	
-		str += tabs + '</%s>\n' % name
+		res += tabs + '</%s>\n' % name
 	
-		return str
+		return res
 	
-	ans = bytes()
+	ans = ''
 	for p in msg:
 		ans += __llrp_data2xml(msg[p], p)
 	return ans[:-1]
