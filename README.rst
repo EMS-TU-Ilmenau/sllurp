@@ -50,8 +50,7 @@ Quick Start
 	powers = reader.power_table
 	
 	tags = reader.detectTags(powerDBm=powers[-1], freqMHz=freqs[0], 
-		mode=1002, session=2, population=1, duration=0.5, 
-		impinj_searchmode=2)
+		mode=1002, session=2, population=1, duration=0.5, searchmode=2)
 	
 	reader.reportTags(tags) # print the results
 
