@@ -118,8 +118,6 @@ class R420_EU(LLRPClient):
 		self.session = session
 		self.population = population
 		self.antennas = antennas
-		# check settings against capabilities
-		self.parseCapabilities(self.capabilities)
 		
 		# prepare inventory
 		self.rounds = rounds

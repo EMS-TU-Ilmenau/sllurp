@@ -513,16 +513,17 @@ class LLRPClient(object):
 			self.capabilities['RegulatoryCapabilities']['UHFBandCapabilities']
 		:returns: list of frequencies in MHz
 		'''
-		freqHopTable = uhfbandcap['FrequencyInformation'].get('FrequencyHopTable0')
-		if freqHopTable:
+		freqInfos = uhfbandcap.get('FrequencyInformation')
+		if freqInfos:
+			freqHopTable = freqInfos.get('FrequencyHopTable0', {})
 			# get frequency values
 			freqs = [int(v[0])/1000. for k, v in freqHopTable.items() 
 				if k.startswith('Frequency')]
 			freqs.sort()
 			return freqs
-		else:
-			logger.warning('No frequency hop table to read')
-			return None
+		
+		logger.warning('No frequency table in capabilities. Using hard-coded list')
+		return None
 	
 	def sendLLRPMessage(self, llrp_msg):
 		self.transport.write(llrp_msg.msgbytes)
