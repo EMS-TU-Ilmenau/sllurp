@@ -165,6 +165,7 @@ class LLRPClient(object):
 		self.antennas = antennas # list or tuple of antenna indices to use
 		self.power = power # transmit power index based on the power_table
 		self.channel = channel # frequency channel index
+		self.hopTableID = 1 # frequency hop table
 		
 		self.report_interval = report_interval # report after duration in sec, OR...
 		self.report_every_n_tags = report_every_n_tags # report every n tags
@@ -334,7 +335,8 @@ class LLRPClient(object):
 			tari=self.tari or self.reader_mode['MaxTari'],
 			session=self.session,
 			population=self.population,
-			impinj_searchmode = self.impinj_searchmode)
+			impinj_searchmode=self.impinj_searchmode, 
+			hopTableID=self.hopTableID)
 		logger.debug('ROSpec: %s', rospec)
 		return rospec
 	
@@ -508,8 +510,7 @@ class LLRPClient(object):
 		
 		return power_table
 	
-	@staticmethod
-	def parseFreqTable(uhfbandcap):
+	def parseFreqTable(self, uhfbandcap):
 		'''Parse the frequency table.
 		:param uhfbandcap: Capability dictionary from
 			self.capabilities['RegulatoryCapabilities']['UHFBandCapabilities']
@@ -518,6 +519,8 @@ class LLRPClient(object):
 		freqInfos = uhfbandcap.get('FrequencyInformation')
 		if freqInfos:
 			freqHopTable = freqInfos.get('FrequencyHopTable0', {})
+			if freqHopTable:
+				self.hopTableID = freqHopTable['HopTableId']
 			# get frequency values
 			freqs = [int(v[0])/1000. for k, v in freqHopTable.items() 
 				if k.startswith('Frequency')]

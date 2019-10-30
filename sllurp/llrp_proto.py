@@ -3164,7 +3164,7 @@ class LLRPROSpec(dict):
 				report_interval=1, report_every_n_tags=None, report_timeout=5,
 				report_selection={}, impinj_report_selection={}, 
 				mode_index=1, tari=16670,
-				session=2, population=1, impinj_searchmode=0):
+				session=2, population=1, impinj_searchmode=0, hopTableID=0):
 		# Sanity checks
 		if msgid <= 0:
 			raise LLRPError('invalid ROSpec message ID {} (need >0)'.format(
@@ -3233,7 +3233,7 @@ class LLRPROSpec(dict):
 			antconf = {
 				'AntennaID': antid,
 				'RFTransmitter': {
-					'HopTableId': 1,
+					'HopTableId': hopTableID,
 					'ChannelIndex': channel,
 					'TransmitPower': power,
 				},
