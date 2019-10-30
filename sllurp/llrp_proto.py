@@ -638,6 +638,47 @@ Message_struct['UTCTimestamp'] = {
 }
 
 
+# 16.2.2.2 Uptime Parameter (basically the same as UTCTimestamp, but different type number)
+def decode_Uptime(data):
+	logger.debug(func())
+	par = {}
+	
+	if len(data) == 0:
+		return None, data
+	
+	header = data[0:par_header_len]
+	msgtype, length = struct.unpack(par_header, header)
+	msgtype = msgtype & BITMASK(10)
+	if msgtype != Message_struct['Uptime']['type']:
+		return (None, data)
+	body = data[par_header_len:length]
+	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
+	
+	# Decode fields
+	(par['Microseconds'], ) = struct.unpack('!Q', body)
+	
+	return par, data[length:]
+
+
+def encode_Uptime(par):
+	msgtype = Message_struct['Uptime']['type']
+	msg = '!HHQ'
+	msg_len = struct.calcsize(msg_header)
+	data = struct.pack(msg, msgtype, msg_len, par['Microseconds'])
+	return data
+
+
+Message_struct['Uptime'] = {
+	'type': 129,
+	'fields': [
+		'Type',
+		'Microseconds'
+	],
+	'decode': decode_Uptime,
+	'encode': encode_Uptime,
+}
+
+
 def decode_RegulatoryCapabilities(data):
 	logger.debug(func())
 	par = {}
@@ -1250,9 +1291,10 @@ def decode_PerAntennaAirProtocol(data):
 	par['NumProtocols']) = struct.unpack(fmt, body[:fmt_len])
 	body = body[fmt_len:]
 	num = int(par['NumProtocols'])
-	id_fmt = '!B'
+	ids_fmt = '!'+num*'B'
+	ids = struct.unpack(ids_fmt, body)
 	for i in range(num):
-		par['ProtocolID{}'.format(i + 1)] = struct.unpack(id_fmt, body[i])[0]
+		par['ProtocolID{}'.format(i+1)] = ids
 	
 	return par, data[length:]
 
@@ -2686,7 +2728,12 @@ def decode_ReaderEventNotificationData(data):
 	if ret:
 		par['UTCTimestamp'] = ret
 	else:
-		raise LLRPError('missing or invalid UTCTimestamp parameter')
+		# Uptime instead of UTCTimestamp
+		ret, body = decode('Uptime')(body)
+		if ret:
+			par['Uptime'] = ret
+		else:
+			raise LLRPError('missing or invalid UTCTimestamp or Uptime parameter')
 	
 	ret, body = decode('ConnectionAttemptEvent')(body)
 	if ret:
