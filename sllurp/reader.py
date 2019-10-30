@@ -61,7 +61,6 @@ class R420_EU(LLRPClient):
 		
 		# connect to reader
 		self.startConnection()
-		self.enableImpinjFeatures()
 		print('Connected to reader')
 	
 	def getPowerIndex(self, powDBm):

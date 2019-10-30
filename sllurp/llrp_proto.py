@@ -3204,7 +3204,7 @@ class LLRPROSpec(dict):
 				}
 			}
 			# patch impinj searchmode
-			if report_selection:
+			if impinj_report_selection:
 				antconf['C1G2InventoryCommand']['ImpinjInventorySearchMode'] = impinj_searchmode
 			
 			ips['AntennaConfiguration'].append(antconf)
