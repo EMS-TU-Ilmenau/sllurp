@@ -157,7 +157,7 @@ class LLRPClient(object):
 	def __init__(self, ip, antennas=(0,), power=0, channel=1, 
 				report_interval=0.1, report_every_n_tags=None, report_timeout=10.,
 				report_selection={}, impinj_report_selection={},
-				mode_index=None, mode_identifier=3, tari=None, 
+				mode_index=None, mode_identifier=None, tari=None, 
 				session=2, population=1, impinj_searchmode=0):
 		# settings
 		self.ip = ip # reader ip address
@@ -277,15 +277,17 @@ class LLRPClient(object):
 		# parse modes
 		regcap = capdict['RegulatoryCapabilities']
 		modes = regcap['UHFBandCapabilities']['UHFRFModeTable']
+		self.mode_table = [v['ModeIdentifier'] for v in modes.values()]
 		# select a mode by matching available modes to requested parameters:
 		# favor mode_identifier over mode_index
 		if self.mode_identifier is not None:
-			try:
-				mode = [v for _, v in modes.items()
-						if v['ModeIdentifier'] == self.mode_identifier][0]
-			except IndexError:
-				raise ReaderConfigurationError('Invalid mode_identifier')
-			self.reader_mode = mode
+			mode_matches = [v for v in modes.values() 
+				if v['ModeIdentifier'] == self.mode_identifier]
+			if not mode_matches:
+				raise ReaderConfigurationError('Invalid mode_identifier {}. '
+					'Modes available: {}'.format(self.mode_identifier, self.mode_table))
+			else:
+				self.reader_mode = mode_matches[0]
 			
 		elif self.mode_index is not None:
 			mode_list = [modes[k] for k in sorted(modes.keys())]
@@ -296,7 +298,7 @@ class LLRPClient(object):
 			
 		else:
 			logger.info('Using default mode (index 0)')
-			self.reader_mode = modes[0]
+			self.reader_mode = list(modes.values())[0]
 
 		logger.debug('using reader mode: %s', self.reader_mode)
 	
