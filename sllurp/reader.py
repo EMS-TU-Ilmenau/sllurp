@@ -118,7 +118,6 @@ class R420_EU(LLRPClient):
 		self.antennas = antennas
 		
 		# prepare inventory
-		self.rounds = rounds
 		self.round = 0
 		self.detectedTags = []
 		# we want to get informed when tags are reported
@@ -253,7 +252,7 @@ class ARU2400(R420_EU):
 		self.startConnection()
 		print('Connected to reader')
 	
-	def detectTags(self, powerDBm=27., freqMHz=866.9, duration=0.5, mode=12, session=2, population=1, antennas=(1,), rounds=1):
+	def detectTags(self, powerDBm=27., freqMHz=866.9, duration=0.5, mode=12, session=2, population=1, antennas=(1,)):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
@@ -270,8 +269,11 @@ class ARU2400(R420_EU):
 		:param rounds: number of tag reports until stopping inventoring
 		:returns: list of detected tags with their meta informations
 		'''
+		# Kathrein does not report multiple tags in one tagreport, so typical interval report is not possible
 		# update settings
-		self.report_interval = duration
+		self.report_interval = None
+		self.report_every_n_tags = 10 # report every n tags
+		self.report_timeout = duration # in case every n tags don't respond
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
 		self.mode_identifier = mode
@@ -280,7 +282,6 @@ class ARU2400(R420_EU):
 		self.antennas = antennas
 		
 		# prepare inventory
-		self.rounds = rounds
 		self.round = 0
 		self.detectedTags = []
 		# we want to get informed when tags are reported
@@ -289,8 +290,12 @@ class ARU2400(R420_EU):
 		# start inventory
 		self.startInventory()
 		# wait for tagreport(s)
-		while self.round < rounds:
-			self.readLLRPMessage('RO_ACCESS_REPORT')
+		while self.round < population*len(antennas):
+			try:
+				self.readLLRPMessage('RO_ACCESS_REPORT')
+			except:
+				# Kathrein does not respond with an empty RO_ACCESS_REPORT
+				break
 		
 		# don't need more reports
 		self.removeMsgCallback('RO_ACCESS_REPORT', self.foundTags)
@@ -298,33 +303,12 @@ class ARU2400(R420_EU):
 		self.stopPolitely()
 		
 		# return results
-		if rounds == 1:
-			return self.detectedTags[0]
-		else:
-			return self.detectedTags
-	
-	def startLiveReports(self, reportCallback, powerDBm=27., freqMHz=866.9, duration=1.0, mode=12, session=2, population=1, antennas=(1,)):
-		'''starts the readers inventoring process and 
-		reports tagreports periodically through a callback function.
+		print('{} unique tags detected'.format(len(self.uniqueTags(self.detectedTags))))
+		return self.detectedTags
 		
-		:param reportCallback: call back function which is called every 
-			"duration" seconds with the tagreport as argument
-		the other parameters are the same as in "detectTags"
-		'''
-		# update settings
-		self.report_interval = duration
-		self.power = self.getPowerIndex(powerDBm)
-		self.channel = self.getChannelIndex(freqMHz)
-		self.mode_identifier = mode
-		self.session = session
-		self.population = population
-		self.antennas = antennas
-		
-		# we want to get informed when tags are reported
-		self._liveReport = reportCallback
-		self.addMsgCallback('RO_ACCESS_REPORT', self._foundTagsLive)
-		
-		# continue non-blocking
-		self._liveStop = threading.Event()
-		self._liveThread = threading.Thread(target=self._liveInventory, args=(self._liveStop,))
-		self._liveThread.start()
+	def foundTags(self, msgdict):
+		'''report about found tags'''
+		tags = msgdict['TagReportData'] or []
+		tags = self.filterTags(tags) # filter tags
+		self.detectedTags.extend(tags) # save tag list
+		self.round += 1
