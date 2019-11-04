@@ -521,8 +521,10 @@ class LLRPClient(object):
 			freqHopTables = [v for k, v in freqInfos.items() if k.startswith('FrequencyHopTable')]
 			if freqHopTables:
 				# select frequency hop table based on specified id
-				freqHopTable = list(filter(lambda t: t['HopTableId'] == self.hopTableID, freqHopTables))[0]
-				if not freqHopTable:
+				freqHopIDTables = list(filter(lambda t: t['HopTableId'] == self.hopTableID, freqHopTables))
+				if freqHopIDTables:
+					freqHopTable = freqHopIDTables[0]
+				else:
 					freqHopTable = freqHopTables[0]
 					logger.warning('No hop table with id {} found. '
 						'Using table {}'.format(self.hopTableID, freqHopTable))
