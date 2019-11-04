@@ -158,14 +158,14 @@ class LLRPClient(object):
 				report_interval=0.1, report_every_n_tags=None, report_timeout=10.,
 				report_selection={}, impinj_report_selection={},
 				mode_index=None, mode_identifier=None, tari=None, 
-				session=2, population=1, impinj_searchmode=0):
+				session=2, population=1, impinj_searchmode=0, freq_hop_table_id=0):
 		# settings
 		self.ip = ip # reader ip address
 		
 		self.antennas = antennas # list or tuple of antenna indices to use
 		self.power = power # transmit power index based on the power_table
 		self.channel = channel # frequency channel index
-		self.hopTableID = 1 # frequency hop table
+		self.hopTableID = freq_hop_table_id # frequency hop table id
 		
 		self.report_interval = report_interval # report after duration in sec, OR...
 		self.report_every_n_tags = report_every_n_tags # report every n tags
@@ -518,16 +518,17 @@ class LLRPClient(object):
 		'''
 		freqInfos = uhfbandcap.get('FrequencyInformation')
 		if freqInfos:
-			freqHopTable = freqInfos.get('FrequencyHopTable0', {})
-			if freqHopTable:
-				self.hopTableID = freqHopTable['HopTableId']
-			# get frequency values
-			freqs = [int(v[0])/1000. for k, v in freqHopTable.items() 
-				if k.startswith('Frequency')]
-			freqs.sort()
-			return freqs
+			# select frequency hop table based on specified id
+			freqHopTables = [v for k, v in freqInfos.items() if 
+				k.startswith('FrequencyHopTable') and v['HopTableId'] == self.hopTableID]
+			if freqHopTables:
+				# get frequency values
+				freqs = [int(v[0])/1000. for k, v in freqHopTables[0].items() if k.startswith('Frequency')]
+				freqs.sort()
+				return freqs
 		
-		logger.warning('No frequency table in capabilities. Using hard-coded list')
+		logger.warning('No frequency hop table in capabilities. '
+			'Using hard-coded list {}.freq_table = {}'.format(self.__class__.__name__, self.freq_table))
 		return None
 	
 	def sendLLRPMessage(self, llrp_msg):
