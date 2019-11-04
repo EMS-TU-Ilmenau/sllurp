@@ -260,7 +260,6 @@ class LLRPClient(object):
 		if max(self.antennas) > max_ant:
 			self.antennas = tuple(range(1, max_ant + 1))
 			logger.info('Wrong antennas specified. Setting to max supported antennas')
-		logger.debug('set antennas: %s', self.antennas)
 		
 		# parse available transmit power entries, set self.power
 		bandcap = capdict['RegulatoryCapabilities']['UHFBandCapabilities']
