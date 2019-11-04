@@ -518,12 +518,16 @@ class LLRPClient(object):
 		'''
 		freqInfos = uhfbandcap.get('FrequencyInformation')
 		if freqInfos:
-			# select frequency hop table based on specified id
-			freqHopTables = [v for k, v in freqInfos.items() if 
-				k.startswith('FrequencyHopTable') and v['HopTableId'] == self.hopTableID]
+			freqHopTables = [v for k, v in freqInfos.items() if k.startswith('FrequencyHopTable')]
 			if freqHopTables:
+				# select frequency hop table based on specified id
+				freqHopTable = list(filter(lambda t: t['HopTableId'] == self.hopTableID, freqHopTables))[0]
+				if not freqHopTable:
+					freqHopTable = freqHopTables[0]
+					logger.warning('No hop table with id {} found. '
+						'Using table {}'.format(self.hopTableID, freqHopTable))
 				# get frequency values
-				freqs = [int(v[0])/1000. for k, v in freqHopTables[0].items() if k.startswith('Frequency')]
+				freqs = [int(v[0])/1000. for k, v in freqHopTable.items() if k.startswith('Frequency')]
 				freqs.sort()
 				return freqs
 		
