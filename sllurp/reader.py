@@ -252,7 +252,7 @@ class ARU2400(R420_EU):
 		self.startConnection()
 		print('Connected to reader')
 	
-	def detectTags(self, powerDBm=27., freqMHz=866.9, duration=0.5, mode=12, session=2, population=1, antennas=(1,)):
+	def detectTags(self, powerDBm=27., freqMHz=866.9, duration=0.5, mode=12, session=2, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
@@ -266,7 +266,6 @@ class ARU2400(R420_EU):
 		:param population: number of tags estimated in the readers scope
 		:antennas: tuple of antenna ports to use for inventory.
 			Set to (0,) to scan automatically over all
-		:param rounds: number of tag reports until stopping inventoring
 		:returns: list of detected tags with their meta informations
 		'''
 		# Kathrein does not report multiple tags in one tagreport, so typical interval report is not possible
@@ -290,7 +289,8 @@ class ARU2400(R420_EU):
 		# start inventory
 		self.startInventory()
 		# wait for tagreport(s)
-		while self.round < population*len(antennas):
+		nAnts = self.capabilities['GeneralDeviceCapabilities']['MaxNumberOfAntennaSupported']
+		while self.round < population*nAnts:
 			try:
 				self.readLLRPMessage('RO_ACCESS_REPORT')
 			except:
