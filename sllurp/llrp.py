@@ -192,6 +192,7 @@ class LLRPClient(object):
 		self.capabilities = {}
 		self.power_table = []
 		self.freq_table = []
+		self.mode_table = []
 		self.reader_mode = None
 		
 		self.expectingRemainingBytes = 0
@@ -278,7 +279,7 @@ class LLRPClient(object):
 		# parse modes
 		regcap = capdict['RegulatoryCapabilities']
 		modes = regcap['UHFBandCapabilities']['UHFRFModeTable']
-		modeTable = [v['ModeIdentifier'] for v in modes.values()]
+		self.mode_table = [v['ModeIdentifier'] for v in modes.values()]
 		# select a mode by matching available modes to requested parameters:
 		# favor mode_identifier over mode_index
 		if self.mode_identifier is not None:
@@ -286,7 +287,7 @@ class LLRPClient(object):
 				if v['ModeIdentifier'] == self.mode_identifier]
 			if not mode_matches:
 				raise ReaderConfigurationError('Invalid mode_identifier {}. '
-					'Modes available: {}'.format(self.mode_identifier, modeTable))
+					'Modes available: {}'.format(self.mode_identifier, self.mode_table))
 			else:
 				self.reader_mode = mode_matches[0]
 			
