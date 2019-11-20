@@ -310,5 +310,21 @@ class ARU2400(R420_EU):
 		'''report about found tags'''
 		tags = msgdict['TagReportData'] or []
 		tags = self.filterTags(tags) # filter tags
-		self.detectedTags.extend(tags) # save tag list
+		# faking duration-based inventory (like R420) by updating existing tagreports if necessary
+		for newTag in tags:
+			newEPC = self.getEPC(newTag)
+			newPort = newTag['AntennaID']
+			alreadySeen = False
+			for oldTag in self.detectedTags:
+				oldEPC = self.getEPC(oldTag)
+				oldPort = oldTag['AntennaID']
+				if oldEPC == newEPC and oldPort == newPort:
+					oldTag['TagSeenCount'] += 1
+					oldTag['PeakRSSI'] = max(oldTag['PeakRSSI'], newTag['PeakRSSI'])
+					oldTag['LastSeenTimestampUptime'] = max(oldTag['LastSeenTimestampUptime'], newTag['LastSeenTimestampUptime'])
+					alreadySeen = True
+					break
+			if not alreadySeen:
+				self.detectedTags.append(newTag)
+		
 		self.round += 1
