@@ -3,13 +3,14 @@ try:
 	import Tkinter as tk # for building the gui - Python 2
 except ImportError:
 	import tkinter as tk # for building the gui - # Python 3
-from sllurp.reader import R420_EU # for controlling the reader
+from sllurp.reader import R420_EU, ARU2400 # for controlling the reader
 
 class InventoryApp(object):
 	'''Main window of the application
 	'''
-	def __init__(self):
+	def __init__(self, readerClass):
 		self.root = tk.Tk()
+		self.readerClass = readerClass
 		self.reader = None
 		self.tags = []
 		
@@ -22,75 +23,22 @@ class InventoryApp(object):
 		
 		headFont = ('Arial', 18)
 		
-		# make reader settings panel
-		settings = tk.Frame(self.root)
-		settings.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+		# make reader config panel
+		self.conf = tk.Frame(self.root)
+		self.conf.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
 		# header
 		row = 0
-		tk.Label(settings, text='Reader settings', font=headFont).grid(row=row, column=0, columnspan=2)
+		tk.Label(self.conf, text='Reader settings', font=headFont).grid(row=row, column=0, columnspan=2)
 		# ip
 		row += 1
 		self.ip = tk.StringVar()
 		self.ip.set('192.168.4.2')
-		tk.Label(settings, text='IP address').grid(row=row, column=0, sticky=tk.W)
-		tk.Entry(settings, textvariable=self.ip).grid(row=row, column=1, sticky=tk.W)
-		# tx power
+		tk.Label(self.conf, text='IP address').grid(row=row, column=0, sticky=tk.W)
+		tk.Entry(self.conf, textvariable=self.ip).grid(row=row, column=1, sticky=tk.W)
+		#  button for connect
 		row += 1
-		self.power = tk.DoubleVar()
-		self.power.set(31.50)
-		tk.Label(settings, text='Tx power [dBm]').grid(row=row, column=0, sticky=tk.W)
-		tk.Scale(settings, from_=10.00, to=31.50, resolution=0.25, variable=self.power, orient=tk.HORIZONTAL).grid(row=row, column=1, sticky=tk.W+tk.E)
-		# frequency
-		row += 1
-		self.freq = tk.DoubleVar()
-		self.freq.set(865.7)
-		tk.Label(settings, text='Frequency [MHz]').grid(row=row, column=0, sticky=tk.W)
-		tk.OptionMenu(settings, self.freq, 865.7, 866.3, 866.9, 867.5).grid(row=row, column=1, sticky=tk.W+tk.E)
-		# preset mode
-		row += 1
-		self.presetmode = tk.IntVar()
-		self.presetmode.set(3)
-		tk.Label(settings, text='Preset mode').grid(row=row, column=0, sticky=tk.W)
-		tk.OptionMenu(settings, self.presetmode, 0, 1, 2, 3, 5, 1000, 1002).grid(row=row, column=1, sticky=tk.W+tk.E)
-		# search mode
-		row += 1
-		self.searchmode = tk.IntVar()
-		self.searchmode.set(3)
-		tk.Label(settings, text='Search mode').grid(row=row, column=0, sticky=tk.W)
-		tk.OptionMenu(settings, self.searchmode, 0, 1, 2, 3).grid(row=row, column=1, sticky=tk.W+tk.E)
-		# session
-		row += 1
-		self.session = tk.IntVar()
-		self.session.set(1)
-		tk.Label(settings, text='Session').grid(row=row, column=0, sticky=tk.W)
-		tk.OptionMenu(settings, self.session, 1, 2).grid(row=row, column=1, sticky=tk.W+tk.E)
-		# tag population
-		row += 1
-		self.population = tk.IntVar()
-		self.population.set(10)
-		tk.Label(settings, text='Tag population').grid(row=row, column=0, sticky=tk.W)
-		tk.Entry(settings, textvariable=self.population).grid(row=row, column=1, sticky=tk.W)
-		# inventory duration
-		row += 1
-		self.duration = tk.DoubleVar()
-		self.duration.set(1.0)
-		tk.Label(settings, text='Inventory duration [s]').grid(row=row, column=0, sticky=tk.W)
-		tk.Entry(settings, textvariable=self.duration).grid(row=row, column=1, sticky=tk.W)
-		# antennas
-		row += 1
-		self.antennas = tk.StringVar()
-		self.antennas.set('auto')
-		tk.Label(settings, text='Antennas').grid(row=row, column=0, sticky=tk.W)
-		tk.Entry(settings, textvariable=self.antennas).grid(row=row, column=1, sticky=tk.W)
-		
-		# buttons for connect and inventory
-		row += 1
-		self.btnConnect = tk.Button(settings, text='Connect reader', command=self.connect)
-		self.btnConnect.grid(row=row, column=0, sticky=tk.W+tk.E+tk.S)
-		settings.rowconfigure(row, weight=1)
-		self.btnInventory = tk.Button(settings, text='Inventory', command=self.inventory, state=tk.DISABLED)
-		self.btnInventory.grid(row=row, column=1, sticky=tk.W+tk.E+tk.S)
-		settings.rowconfigure(row, weight=1)
+		self.btnConnect = tk.Button(self.conf, text='Connect reader', command=self.connect)
+		self.btnConnect.grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E)
 		
 		# make the found tags list
 		taglist = tk.Frame(self.root)
@@ -119,14 +67,73 @@ class InventoryApp(object):
 		# start working
 		self.root.mainloop()
 	
+	def buildSettings(self):
+		row = 2
+		# tx power
+		row += 1
+		self.power = tk.DoubleVar()
+		self.power.set(self.reader.power_table[-1])
+		tk.Label(self.conf, text='Tx power [dBm]').grid(row=row, column=0, sticky=tk.W)
+		tk.Scale(self.conf, from_=self.reader.power_table[0], to=self.reader.power_table[-1], resolution=0.25, variable=self.power, orient=tk.HORIZONTAL).grid(row=row, column=1, sticky=tk.W+tk.E)
+		# frequency
+		row += 1
+		self.freq = tk.DoubleVar()
+		self.freq.set(self.reader.freq_table[0])
+		tk.Label(self.conf, text='Frequency [MHz]').grid(row=row, column=0, sticky=tk.W)
+		tk.OptionMenu(self.conf, self.freq, *(self.reader.freq_table)).grid(row=row, column=1, sticky=tk.W+tk.E)
+		# preset mode
+		row += 1
+		self.presetmode = tk.IntVar()
+		self.presetmode.set(self.reader.mode_table[0])
+		tk.Label(self.conf, text='Preset mode').grid(row=row, column=0, sticky=tk.W)
+		tk.OptionMenu(self.conf, self.presetmode, *(self.reader.mode_table)).grid(row=row, column=1, sticky=tk.W+tk.E)
+		if self.reader.impinj_report_selection:
+			# search mode
+			row += 1
+			self.searchmode = tk.IntVar()
+			self.searchmode.set(2)
+			tk.Label(self.conf, text='Search mode').grid(row=row, column=0, sticky=tk.W)
+			tk.OptionMenu(self.conf, self.searchmode, 0, 1, 2, 3).grid(row=row, column=1, sticky=tk.W+tk.E)
+		# session
+		row += 1
+		self.session = tk.IntVar()
+		self.session.set(1)
+		tk.Label(self.conf, text='Session').grid(row=row, column=0, sticky=tk.W)
+		tk.OptionMenu(self.conf, self.session, 0, 1, 2, 3).grid(row=row, column=1, sticky=tk.W+tk.E)
+		# tag population
+		row += 1
+		self.population = tk.IntVar()
+		self.population.set(4)
+		tk.Label(self.conf, text='Tag population').grid(row=row, column=0, sticky=tk.W)
+		tk.Entry(self.conf, textvariable=self.population).grid(row=row, column=1, sticky=tk.W)
+		# inventory duration
+		row += 1
+		self.duration = tk.DoubleVar()
+		self.duration.set(1.0)
+		tk.Label(self.conf, text='Inventory duration [s]').grid(row=row, column=0, sticky=tk.W)
+		tk.Entry(self.conf, textvariable=self.duration).grid(row=row, column=1, sticky=tk.W)
+		# antennas
+		row += 1
+		self.antennas = tk.StringVar()
+		self.antennas.set('auto')
+		tk.Label(self.conf, text='Antennas').grid(row=row, column=0, sticky=tk.W)
+		tk.Entry(self.conf, textvariable=self.antennas).grid(row=row, column=1, sticky=tk.W)
+		
+		# button for inventory
+		self.btnInventory = tk.Button(self.conf, text='Inventory', command=self.inventory, state=tk.DISABLED)
+		self.btnInventory.grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
+		self.conf.rowconfigure(row, weight=1)
+	
 	def connect(self):
 		if not self.reader:
 			try:
-				self.reader = R420_EU(self.ip.get())
-				self.btnConnect.config(state=tk.DISABLED)
-				self.btnInventory.config(state=tk.NORMAL)
+				self.reader = self.readerClass(self.ip.get())
 			except:
 				pass
+			else:
+				self.buildSettings()
+				self.btnConnect.config(state=tk.DISABLED)
+				self.btnInventory.config(state=tk.NORMAL)
 		else:
 			self.reader.disconnect()
 			self.reader = None
@@ -144,15 +151,18 @@ class InventoryApp(object):
 		antennas = (0,) if 'auto' in antStr else tuple(int(a) for a in antStr.split(','))
 
 		# inventory with settings
-		self.tags = self.reader.detectTags(
-			powerDBm=self.power.get(), 
-			freqMHz=self.freq.get(), 
-			duration=self.duration.get(), 
-			mode=self.presetmode.get(), 
-			session=self.session.get(), 
-			searchmode=self.searchmode.get(), 
-			population=self.population.get(), 
-			antennas=antennas)
+		settings = {
+			'powerDBm': self.power.get(), 
+			'freqMHz': self.freq.get(), 
+			'duration': self.duration.get(), 
+			'mode': self.presetmode.get(), 
+			'session': self.session.get(), 
+			'population': self.population.get(), 
+			'antennas': antennas}
+		if self.reader.impinj_report_selection:
+			settings.update({'searchmode': self.searchmode.get()})
+		
+		self.tags = self.reader.detectTags(**settings)
 		
 		self.tagsHeader.set('{} Tags ({} unique)'.format(len(self.tags), len(self.reader.uniqueTags(self.tags))))
 		# insert found tags
@@ -170,7 +180,7 @@ class InventoryApp(object):
 			else:
 				stars = '*'
 			# get last 3 digits of Tag ID
-			epc = tag.get('EPC-96', '0000')
+			epc = self.reader.getEPC(tag)
 			id = int(epc[-2:], 16)
 			# insert line with EPC, ID and RSSI
 			self.tagsDetected.insert(tk.END, '{} (...{}) | {}'.format(epc, id, stars))
@@ -186,4 +196,4 @@ class InventoryApp(object):
 			self.tagInfo.set(infos)
 
 if __name__ == '__main__':
-	InventoryApp()
+	InventoryApp(R420_EU)
