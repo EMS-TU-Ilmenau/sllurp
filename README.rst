@@ -53,7 +53,8 @@ Quick Start
 	tags = reader.detectTags(powerDBm=powers[-1], freqMHz=freqs[0], 
 		mode=1002, session=2, population=1, duration=0.5, searchmode=2)
 	
-	reader.reportTags(tags) # print the results
+	for tag in tags:
+		print(tag)
 
 Logging
 -------
@@ -63,6 +64,12 @@ Logging
     import logging
 	
 	logging.basicConfig(filename='llrp.log', level=logging.DEBUG)
+
+GUI
+---
+
+Currently, the GUI supports only the classes defined in .. _reader: sllurp/reader.py.
+You have to change the class in the last line of the .. _app: inventory_app.py.
 
 
 Known Issues
