@@ -68,9 +68,11 @@ Logging
 GUI
 ---
 
-Currently, the GUI supports only the classes defined in .. _reader: sllurp/reader.py.
-You have to change the class in the last line of the .. _app: inventory_app.py.
+Currently, the GUI supports only the classes defined in reader_.
+You have to change the class in the last line of the app_.
 
+.. _reader: sllurp/reader.py
+_app: inventory_app.py
 
 Known Issues
 ------------
