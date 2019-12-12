@@ -72,7 +72,7 @@ Currently, the GUI supports only the classes defined in reader_.
 You have to change the class in the last line of the app_.
 
 .. _reader: sllurp/reader.py
-_app: inventory_app.py
+.. _app: inventory_app.py
 
 Known Issues
 ------------
