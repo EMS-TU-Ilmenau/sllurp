@@ -179,6 +179,7 @@ class R420_EU(LLRPClient):
 		'''stops the live inventoring'''
 		try:
 			self._liveStop.set()
+			self._liveThread.join()
 		except:
 			pass
 	
