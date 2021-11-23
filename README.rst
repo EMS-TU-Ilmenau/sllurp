@@ -56,6 +56,59 @@ Quick Start
 	for tag in tags:
 		print(tag)
 
+Tag access
+-----------
+
+Example code for changing Tags EPC
+
+.. code:: python
+
+	from sllurp.reader import R420_EU
+	#import logging
+	#logging.basicConfig(filename='log.txt', level=logging.DEBUG)
+
+	reader = R420_EU('192.168.4.2') # connect to reader
+
+	# setup access spec
+	epcLen = 12 # total number of bytes
+	epcRawStart = b'\x12\x34\x56\x78' # let the raw EPC URI start with these bytes
+	epcRawUri = epcRawStart+b'\x00'*(epcLen-len(epcRawStart)) # fill up with zeros
+	# note: 1 Word = 2 Bytes
+	writeSpecParam = {
+		'OpSpecID': 0,
+		'MB': 1,
+		'WordPtr': 2,
+		'AccessPassword': 0,
+		'WriteDataWordCount': len(epcRawUri)//2,
+		'WriteData': epcRawUri,
+	}
+	reader.startAccess(writeWords=writeSpecParam, opCount=0) # set opCount to 1 to stop after 1 write operation
+	# Actually adds and enables an access spec.
+	# It is executed with the next inventory round (reader.detectTags())
+
+	'''
+	readSpecParam = {
+		'OpSpecID': 0,
+		'MB': 1,
+		'WordPtr': 0,
+		'AccessPassword': 0,
+		'WordCount': 8
+	}
+	reader.startAccess(readWords=readSpecParam)
+	'''
+
+	print('Before changing:')
+	tags = reader.detectTags(powerDBm=16, antennas=(1,)) # remove antennas argument or set to (0,) to use all antenna ports
+	for tag in tags:
+		print(tag)
+	# At this point, the access spec is deleted
+	
+	# Normal inventory
+	print('After changing:')
+	tags = reader.detectTags(powerDBm=16, antennas=(1,))
+	for tag in tags:
+		print(tag)
+
 Logging
 -------
 
