@@ -31,8 +31,6 @@ We also modified the llrp_, llrp_proto_ and llrp_decoder_ modules to handle impi
 Also, llrp_ is now completely rewritten to be state-less and does not depend on twisted.
 That way, the code is much cleaner and there is no hassle with chaining deferreds.
 
-Currently, only inventoring is implemented (scrapped the access methods).
-
 .. _reader: sllurp/reader.py
 .. _llrp: sllurp/llrp.py
 .. _llrp_proto: sllurp/llrp_proto.py
