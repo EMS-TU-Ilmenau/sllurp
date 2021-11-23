@@ -614,7 +614,7 @@ def decode_UTCTimestamp(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(par['Microseconds'], ) = struct.unpack('!Q', body)
+	par['Microseconds'], = struct.unpack('!Q', body)
 	
 	return par, data[length:]
 
@@ -655,7 +655,7 @@ def decode_Uptime(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(par['Microseconds'], ) = struct.unpack('!Q', body)
+	par['Microseconds'], = struct.unpack('!Q', body)
 	
 	return par, data[length:]
 
@@ -813,7 +813,7 @@ def decode_FrequencyInformation(data):
 	
 	fmt_len = struct.calcsize('!B')
 	# Decode fields
-	(flags, ) = struct.unpack('!B', body[:fmt_len])
+	flags, = struct.unpack('!B', body[:fmt_len])
 	par['Hopping'] = flags & BIT(7) == BIT(7)
 	body = body[fmt_len:]
 	
@@ -868,7 +868,7 @@ def decode_FrequencyHopTable(data):
 	body = body[fmt_len:]
 	num = int(par['NumHops'])
 	for x in range(1, num + 1):
-		par['Frequency' + str(x)] = struct.unpack(id_fmt, body[: id_fmt_len])
+		par['Frequency' + str(x)], = struct.unpack(id_fmt, body[: id_fmt_len])
 		body = body[id_fmt_len:]
 	
 	return par, data[length:]
@@ -905,11 +905,11 @@ def decode_FixedFrequencyTable(data):
 	id_fmt = '!I'
 	id_fmt_len = struct.calcsize(id_fmt)
 	# Decode fields
-	par['NumFrequencies'] = struct.unpack(fmt, body[: fmt_len])
+	par['NumFrequencies'], = struct.unpack(fmt, body[: fmt_len])
 	body = body[fmt_len:]
 	num = int(par['NumFrequencies'])
 	for x in range(1, num + 1):
-		par['Frequency' + str(x)] = struct.unpack(id_fmt, body[:id_fmt_len])
+		par['Frequency' + str(x)], = struct.unpack(id_fmt, body[:id_fmt_len])
 		body = body[id_fmt_len:]
 	
 	return par, data[length:]
@@ -1192,7 +1192,7 @@ def decode_MaximumReceiveSensitivity(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(par['MaximumSensitivityValue']) = struct.unpack('!H', body)
+	par['MaximumSensitivityValue'], = struct.unpack('!H', body)
 	
 	return par, data[length:]
 
@@ -1221,7 +1221,7 @@ def decode_ReceiveSensitivityTableEntry(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(par['Index'], par['ReceiveSensitivityValue']) = struct.unpack('!HH', body)
+	par['Index'], par['ReceiveSensitivityValue'] = struct.unpack('!HH', body)
 	
 	return par, data[length:]
 
@@ -1291,10 +1291,9 @@ def decode_PerAntennaAirProtocol(data):
 	par['NumProtocols']) = struct.unpack(fmt, body[:fmt_len])
 	body = body[fmt_len:]
 	num = int(par['NumProtocols'])
-	ids_fmt = '!'+num*'B'
-	ids = struct.unpack(ids_fmt, body)
+	id_fmt = '!B'
 	for i in range(num):
-		par['ProtocolID{}'.format(i+1)] = ids
+		par['ProtocolID{}'.format(i + 1)], = struct.unpack(id_fmt, body[i:i+1])
 	
 	return par, data[length:]
 
@@ -1325,7 +1324,7 @@ def decode_GPIOCapabilities(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(par['NumGPIs'], par['NumGPIs']) = struct.unpack('!HH', body)
+	par['NumGPIs'], par['NumGPIs'] = struct.unpack('!HH', body)
 	
 	return par, data[length:]
 
@@ -1660,11 +1659,8 @@ Message_struct['C1G2TagSpec'] = {
 
 
 def encode_bitstring(bstr, length_bytes):
-	def B(x):
-		return struct.pack('!B', x)
-	Bs = map(B, struct.unpack('>' + 'B' * len(bstr), bstr))
-	Bs += ['\x00'] * (length_bytes - len(bstr))
-	return ''.join(Bs)
+	padding = b'\x00' * (length_bytes - len(bstr))
+	return bstr + padding
 
 
 def encode_C1G2TargetTag(par):
@@ -1677,12 +1673,12 @@ def encode_C1G2TargetTag(par):
 	data += struct.pack('!H', int(par['Pointer']))
 	data += struct.pack('!H', int(par['MaskBitCount']))
 	if int(par['MaskBitCount']):
-		numBytes = ((par['MaskBitCount'] - 1) / 8) + 1
+		numBytes = ((par['MaskBitCount'] - 1) // 8) + 1
 		data += encode_bitstring(par['TagMask'], numBytes)
 	
 	data += struct.pack('!H', int(par['DataBitCount']))
 	if int(par['DataBitCount']):
-		numBytes = ((par['DataBitCount'] - 1) / 8) + 1
+		numBytes = ((par['DataBitCount'] - 1) // 8) + 1
 		data += encode_bitstring(par['TagData'], numBytes)
 	
 	data = struct.pack(msg_header, msgtype,
@@ -2363,7 +2359,7 @@ Message_struct['TagReportContentSelector'] = {
 		'EnableInventoryParameterSpecID',
 		'EnableAntennaID',
 		'EnableChannelIndex',
-		'EnablePeakRRSI',
+		'EnablePeakRSSI',
 		'EnableFirstSeenTimestamp',
 		'EnableLastSeenTimestamp',
 		'EnableTagSeenCount',
@@ -2482,18 +2478,18 @@ def decode_OpSpecResult(data):
 	body = body[3:]
 	
 	if msgtype == Message_struct['C1G2ReadOpSpecResult']['type']:
-		wordcnt = struct.unpack('!H', body[:2])[0]
+		wordcnt, = struct.unpack('!H', body[:2])
 		par['ReadDataWordCount'] = wordcnt
 		end = 2 + (wordcnt * 2)
 		par['ReadData'] = body[2:end]
 	
 	elif msgtype in (Message_struct['C1G2WriteOpSpecResult']['type'],
 					Message_struct['C1G2BlockWriteOpSpecResult']['type']):
-		par['NumWordsWritten'] = struct.unpack('!H', body[:2])[0]
+		par['NumWordsWritten'], = struct.unpack('!H', body[:2])
 	
 	psosr = Message_struct['C1G2GetBlockPermalockStatusOpSpecResult']
 	if msgtype == psosr['type']:
-		wordcnt = struct.unpack('!H', body[:2])[0]
+		wordcnt, = struct.unpack('!H', body[:2])
 		par['StatusWordCount'] = wordcnt
 		end = 2 + (wordcnt * 2)
 		par['PermalockStatus'] = body[2:end]
@@ -2629,7 +2625,7 @@ def decode_EPCData(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(par['EPCLengthBits'], ) = struct.unpack('!H',
+	par['EPCLengthBits'], = struct.unpack('!H',
 											body[0:struct.calcsize('!H')])
 	par['EPC'] = hexlify(body[struct.calcsize('!H'):])
 	
@@ -2655,11 +2651,11 @@ def decode_EPC96(data):
 		return None, data
 	
 	header = data[0:tve_header_len]
-	(msgtype, ) = struct.unpack(tve_header, header)
+	msgtype, = struct.unpack(tve_header, header)
 	msgtype = msgtype & BITMASK(7)
 	if msgtype != Message_struct['EPC-96']['type']:
 		return (None, data)
-	length = tve_header_len + int(96 / 8)
+	length = tve_header_len +96 // 8
 	body = data[tve_header_len:length]
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
@@ -2695,7 +2691,7 @@ def decode_ROSpecID(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(par['ROSpecID'], ) = struct.unpack('!I', body)
+	par['ROSpecID'], = struct.unpack('!I', body)
 	
 	return par, data[length:]
 
@@ -2783,7 +2779,7 @@ def decode_AntennaEvent(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(event_type, antenna_id) = struct.unpack('!BH', body)
+	event_type, antenna_id = struct.unpack('!BH', body)
 	par['EventType'] = event_type and 'Connected' or 'Disconnected'
 	par['AntennaID'] = antenna_id
 	
@@ -2818,7 +2814,7 @@ def decode_ConnectionAttemptEvent(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 	
 	# Decode fields
-	(status, ) = struct.unpack('!H', body)
+	status, = struct.unpack('!H', body)
 	par['Status'] = ConnEvent_Type2Name[status]
 	
 	return par, data[length:]
@@ -2856,7 +2852,7 @@ def decode_LLRPStatus(data):
 	
 	# Decode fields
 	offset = struct.calcsize('!HH')
-	(code, n) = struct.unpack('!HH', body[:offset])
+	code, n = struct.unpack('!HH', body[:offset])
 	try:
 		par['StatusCode'] = Error_Type2Name[code]
 	except KeyError:
@@ -2915,7 +2911,7 @@ def decode_FieldError(data):
 	
 	# Decode fields
 	offset = struct.calcsize('!H')
-	(par['FieldNum'], ) = struct.unpack('!H', body[:offset])
+	par['FieldNum'], = struct.unpack('!H', body[:offset])
 	
 	return par, data[length:]
 
@@ -3182,7 +3178,7 @@ class LLRPROSpec(dict):
 			'EnableInventoryParameterSpecID': False,
 			'EnableAntennaID': True,
 			'EnableChannelIndex': False,
-			'EnablePeakRRSI': True,
+			'EnablePeakRSSI': True,
 			'EnableFirstSeenTimestamp': False,
 			'EnableLastSeenTimestamp': True,
 			'EnableTagSeenCount': True,
