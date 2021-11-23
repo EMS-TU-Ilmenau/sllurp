@@ -4,8 +4,8 @@ import logging
 import pprint
 import struct
 from .llrp_proto import LLRPROSpec, LLRPError, Message_struct, \
-	Message_Type2Name, Capability_Name2Type, llrp_data2xml, LLRPMessageDict, \
-	ReaderConfigurationError, EXT_TYPE
+	Message_Type2Name, Capability_Name2Type, AirProtocol, \
+	llrp_data2xml, LLRPMessageDict, ReaderConfigurationError, EXT_TYPE
 from binascii import hexlify
 from .util import BITMASK
 import socket # for connecting to the reader via TCP/IP
@@ -351,7 +351,7 @@ class LLRPClient(object):
 		self.send_ADD_ROSPEC(rospec)
 		self.readLLRPMessage('ADD_ROSPEC_RESPONSE')
 		# enable rospec
-		self.send_ENABLE_ROSPEC(rospec)
+		self.send_ENABLE_ROSPEC(rospec['ROSpecID'])
 		self.readLLRPMessage('ENABLE_ROSPEC_RESPONSE')
 	
 	def stopPolitely(self):
@@ -363,6 +363,92 @@ class LLRPClient(object):
 		# delete all rospecs
 		self.send_DELETE_ROSPEC()
 		self.readLLRPMessage('DELETE_ROSPEC_RESPONSE')
+	
+	def startAccess(self, readWords=None, writeWords=None, target=None,
+					opCount=1, accessSpecID=1, param=None,
+					*args):
+		m = Message_struct['AccessSpec']
+		if not target:
+			target = {
+				'MB': 0,
+				'Pointer': 0,
+				'MaskBitCount': 0,
+				'TagMask': b'',
+				'DataBitCount': 0,
+				'TagData': b''
+			}
+
+		opSpecParam = {
+			'OpSpecID': 0,
+			'AccessPassword': 0,
+		}
+
+		if readWords:
+			opSpecParam['MB'] = readWords['MB']
+			opSpecParam['WordPtr'] = readWords['WordPtr']
+			opSpecParam['WordCount'] = readWords['WordCount']
+			if 'OpSpecID' in readWords:
+				opSpecParam['OpSpecID'] = readWords['OpSpecID']
+			if 'AccessPassword' in readWords:
+				opSpecParam['AccessPassword'] = readWords['AccessPassword']
+
+		elif writeWords:
+			opSpecParam['MB'] = writeWords['MB']
+			opSpecParam['WordPtr'] = writeWords['WordPtr']
+			opSpecParam['WriteDataWordCount'] = \
+				writeWords['WriteDataWordCount']
+			opSpecParam['WriteData'] = writeWords['WriteData']
+			if 'OpSpecID' in writeWords:
+				opSpecParam['OpSpecID'] = writeWords['OpSpecID']
+			if 'AccessPassword' in writeWords:
+				opSpecParam['AccessPassword'] = writeWords['AccessPassword']
+
+		elif param:
+			# special parameters like C1G2Lock
+			opSpecParam = param
+
+		else:
+			raise LLRPError('startAccess requires readWords or writeWords.')
+
+		accessStopParam = {
+			'AccessSpecStopTriggerType': 1 if opCount > 0 else 0,
+			'OperationCountValue': opCount,
+		}
+
+		accessSpec = {
+			'Type': m['type'],
+			'AccessSpecID': accessSpecID,
+			'AntennaID': 0,  # all antennas
+			'ProtocolID': AirProtocol['EPCGlobalClass1Gen2'],
+			'C': False,  # disabled by default
+			'ROSpecID': 0,  # all ROSpecs
+			'AccessSpecStopTrigger': accessStopParam,
+			'AccessCommand': {
+				'TagSpecParameter': {
+					'C1G2TargetTag': {  # XXX correct values?
+						'MB': target['MB'],
+						'M': 1,
+						'Pointer': target['Pointer'],
+						'MaskBitCount': target['MaskBitCount'],
+						'TagMask': target['TagMask'],
+						'DataBitCount': target['DataBitCount'],
+						'TagData': target['TagData']
+					}
+				},
+				'OpSpecParameter': opSpecParam,
+			},
+			'AccessReportSpec': {
+				'AccessReportTrigger': 1  # report at end of access
+			}
+		}
+		logger.debug('AccessSpec: %s', accessSpec)
+
+		# add spec
+		self.send_ADD_ACCESSSPEC(accessSpec)
+		self.readLLRPMessage('ADD_ACCESSSPEC_RESPONSE')
+		# enable it
+		self.send_ENABLE_ACCESSSPEC(accessSpec['AccessSpecID'])
+		self.readLLRPMessage('ENABLE_ACCESSSPEC_RESPONSE')
 	
 	def handleMessage(self, lmsg):
 		'''Checks a LLRP message for common issues.'''
@@ -458,23 +544,23 @@ class LLRPClient(object):
 				'ID':   0
 			}}))
 	
-	def send_ADD_ROSPEC(self, rospec):
+	def send_ADD_ROSPEC(self, roSpec):
 		self.sendLLRPMessage(LLRPMessage(msgdict={
 			'ADD_ROSPEC': {
 				'Ver':  1,
 				'Type': 20,
 				'ID':   0,
-				'ROSpecID': rospec['ROSpecID'],
-				'ROSpec': rospec,
+				'ROSpecID': roSpec['ROSpecID'],
+				'ROSpec': roSpec,
 			}}))
 	
-	def send_ENABLE_ROSPEC(self, rospec):
+	def send_ENABLE_ROSPEC(self, roSpecID):
 		self.sendLLRPMessage(LLRPMessage(msgdict={
 			'ENABLE_ROSPEC': {
 				'Ver':  1,
 				'Type': 24,
 				'ID':   0,
-				'ROSpecID': rospec['ROSpecID']
+				'ROSpecID': roSpecID
 			}}))
 	
 	def send_DELETE_ROSPEC(self, roSpecID=0):
@@ -485,6 +571,33 @@ class LLRPClient(object):
 				'Type': 21,
 				'ID':   0,
 				'ROSpecID': roSpecID
+			}}))
+	
+	def send_ADD_ACCESSSPEC(self, accessSpec):
+		self.sendLLRPMessage(LLRPMessage(msgdict={
+			'ADD_ACCESSSPEC': {
+				'Ver':  1,
+				'Type': 40,
+				'ID':   0,
+				'AccessSpec': accessSpec,
+			}}))
+
+	def send_ENABLE_ACCESSSPEC(self, accessSpecID):
+		self.sendLLRPMessage(LLRPMessage(msgdict={
+			'ENABLE_ACCESSSPEC': {
+				'Ver':  1,
+				'Type': 42,
+				'ID':   0,
+				'AccessSpecID': accessSpecID,
+			}}))
+	
+	def send_DISABLE_ACCESSSPEC(self, accessSpecID=1):
+		self.sendLLRPMessage(LLRPMessage(msgdict={
+			'DISABLE_ACCESSSPEC': {
+				'Ver':  1,
+				'Type': 43,
+				'ID':   0,
+				'AccessSpecID': accessSpecID,
 			}}))
 	
 	def send_DELETE_ACCESSSPEC(self, accessSpecID=0):
