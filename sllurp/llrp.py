@@ -646,7 +646,7 @@ class LLRPClient(object):
 						'Using table {}'.format(self.hopTableID, freqHopTable))
 					self.hopTableID = freqHopTable['HopTableId']
 				# get frequency values
-				freqs = [int(v[0])/1000. for k, v in freqHopTable.items() if k.startswith('Frequency')]
+				freqs = [int(v)/1000. for k, v in freqHopTable.items() if k.startswith('Frequency')]
 				freqs.sort()
 				return freqs
 		
