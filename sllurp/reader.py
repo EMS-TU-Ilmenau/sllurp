@@ -20,9 +20,6 @@ class R420_EU(LLRPClient):
 		# init common llrp stuff
 		LLRPClient.__init__(self, ip, *args, **kwargs)
 		
-		# backup frequency table
-		self.freq_table = [865.7, 866.3, 866.9, 867.5]
-		
 		# select what data we want to get from the reader
 		self.report_selection = {
 			'EnableROSpecID': False,

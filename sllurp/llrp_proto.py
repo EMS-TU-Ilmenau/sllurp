@@ -922,7 +922,7 @@ Message_struct['FixedFrequencyTable'] = {
 		'NumFrequencies',
 		'Frequencies'
 	],
-	'decode': decode_FrequencyInformation
+	'decode': decode_FixedFrequencyTable
 }
 
 

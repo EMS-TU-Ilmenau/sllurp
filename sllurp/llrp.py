@@ -274,7 +274,7 @@ class LLRPClient(object):
 			logger.info('Wrong power index %d specified. Setting to max power', self.power)
 		
 		# parse available frequencies
-		self.freq_table = self.parseFreqTable(bandcap) or self.freq_table
+		self.freq_table = self.parseFreqTable(bandcap)
 		
 		# parse modes
 		regcap = capdict['RegulatoryCapabilities']
@@ -634,25 +634,37 @@ class LLRPClient(object):
 		'''
 		freqInfos = uhfbandcap.get('FrequencyInformation')
 		if freqInfos:
-			freqHopTables = [v for k, v in freqInfos.items() if k.startswith('FrequencyHopTable')]
-			if freqHopTables:
-				# select frequency hop table based on specified id
-				freqHopIDTables = list(filter(lambda t: t['HopTableId'] == self.hopTableID, freqHopTables))
-				if freqHopIDTables:
-					freqHopTable = freqHopIDTables[0]
-				else:
-					freqHopTable = freqHopTables[0]
-					logger.warning('No hop table with id {} found. '
-						'Using table {}'.format(self.hopTableID, freqHopTable))
-					self.hopTableID = freqHopTable['HopTableId']
-				# get frequency values
-				freqs = [int(v)/1000. for k, v in freqHopTable.items() if k.startswith('Frequency')]
+			# checks the frequency informations
+			def freqTableValuesMHz(freqTable):
+				''':returns: frequency values in MHz'''
+				freqs = [int(v)/1000. for k, v in freqTable.items() if k.startswith('Frequency')]
 				freqs.sort()
 				return freqs
+			
+			# frequency hopping region?
+			hopping = freqInfos.get('Hopping')
+			if hopping:
+				freqHopTables = [v for k, v in freqInfos.items() if k.startswith('FrequencyHopTable')]
+				if freqHopTables:
+					# select frequency hop table based on specified id
+					freqHopIDTables = list(filter(lambda t: t['HopTableId'] == self.hopTableID, freqHopTables))
+					if freqHopIDTables:
+						freqHopTable = freqHopIDTables[0]
+					else:
+						freqHopTable = freqHopTables[0]
+						logger.warning('No hop table with id {} found. '
+							'Using table {}'.format(self.hopTableID, freqHopTable))
+						self.hopTableID = freqHopTable['HopTableId']
+
+					return freqTableValuesMHz(freqHopTable)
+			else:
+				# fixed frequency list
+				fixedFreqTable = freqInfos.get('FixedFrequencyTable')
+				if fixedFreqTable:
+					return freqTableValuesMHz(fixedFreqTable)
 		
-		logger.warning('No frequency hop table in capabilities. '
-			'Using hard-coded list {}.freq_table = {}'.format(self.__class__.__name__, self.freq_table))
-		return None
+		logger.warning('No fixed or hop frequency table in capabilities')
+		return []
 	
 	def sendLLRPMessage(self, llrp_msg):
 		self.transport.write(llrp_msg.msgbytes)
