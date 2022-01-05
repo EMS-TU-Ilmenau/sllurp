@@ -515,7 +515,7 @@ Message_struct['RO_ACCESS_REPORT'] = {
 
 # 16.1.35 KEEPALIVE
 def decode_Keepalive(msg):
-	return ''
+	return b''
 
 
 Message_struct['KEEPALIVE'] = {
@@ -529,7 +529,7 @@ Message_struct['KEEPALIVE'] = {
 
 # 16.1.36 KEEPALIVE_ACK
 def encode_KeepaliveAck(msg):
-	return ''
+	return b''
 
 
 Message_struct['KEEPALIVE_ACK'] = {
@@ -570,7 +570,7 @@ Message_struct['READER_EVENT_NOTIFICATION'] = {
 
 # 16.1.40 CLOSE_CONNECTION
 def encode_CloseConnection(msg):
-	return ''
+	return b''
 
 
 Message_struct['CLOSE_CONNECTION'] = {
