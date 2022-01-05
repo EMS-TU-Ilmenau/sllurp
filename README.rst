@@ -9,6 +9,7 @@ with not much effort to other LLRP-compatible readers:
 - Impinj Speedway xPortal
 - Motorola MC9190-Z (handheld)
 - Kathrein ARU2400
+- Zebra FX9600
 
 File an issue on GitHub_ if you would like help getting another kind of reader to work.
 

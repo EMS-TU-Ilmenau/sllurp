@@ -326,3 +326,36 @@ class ARU2400(R420):
 				self.detectedTags.append(newTag)
 		
 		self.round += 1
+
+
+class FX9600(R420):
+	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
+		''':param ip: IP address of the reader
+		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.
+			Other tags will not be reported when used.
+		:param excludeEPCs: string or list of strings containing EPCs to ignore during inventory.
+			Tags with these EPCs will not be reported when used.
+		'''
+		# epc filters
+		self.includeEPCs = includeEPCs
+		self.excludeEPCs = excludeEPCs
+		
+		# init common llrp stuff
+		LLRPClient.__init__(self, ip, *args, **kwargs)
+		
+		# select what data we want to get from the reader
+		self.report_selection = {
+			'EnableROSpecID': False,
+			'EnableSpecIndex': False,
+			'EnableInventoryParameterSpecID': False,
+			'EnableAntennaID': True,
+			'EnableChannelIndex': True,
+			'EnablePeakRRSI': True,
+			'EnableFirstSeenTimestamp': True,
+			'EnableLastSeenTimestamp': True,
+			'EnableTagSeenCount': True,
+			'EnableAccessSpecID': False}
+		
+		# connect to reader
+		self.startConnection()
+		print('Connected to reader')
