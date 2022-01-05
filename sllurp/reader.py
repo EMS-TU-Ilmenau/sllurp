@@ -5,7 +5,7 @@ import threading # for making live tag reports non-blocking
 Classes for specific reader implementations
 '''
 
-class R420_EU(LLRPClient):
+class R420(LLRPClient):
 	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
 		''':param ip: IP address of the reader
 		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.
@@ -218,7 +218,7 @@ class R420_EU(LLRPClient):
 		return epcs
 
 
-class ARU2400(R420_EU):
+class ARU2400(R420):
 	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
 		''':param ip: IP address of the reader
 		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.

@@ -41,9 +41,9 @@ Quick Start
 
 .. code:: python
 
-	from sllurp.reader import R420_EU
+	from sllurp.reader import R420
 	
-	reader = R420_EU('192.168.4.2')
+	reader = R420('192.168.4.2')
 	
 	freqs = reader.freq_table
 	powers = reader.power_table
@@ -61,11 +61,11 @@ Example code for changing Tags EPC
 
 .. code:: python
 
-	from sllurp.reader import R420_EU
+	from sllurp.reader import R420
 	#import logging
 	#logging.basicConfig(filename='log.txt', level=logging.DEBUG)
 
-	reader = R420_EU('192.168.4.2') # connect to reader
+	reader = R420('192.168.4.2') # connect to reader
 
 	# setup access spec
 	epcLen = 12 # total number of bytes
