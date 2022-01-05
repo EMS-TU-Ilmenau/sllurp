@@ -5,7 +5,7 @@ import pprint
 import struct
 from .llrp_proto import LLRPROSpec, LLRPError, Message_struct, \
 	Message_Type2Name, Capability_Name2Type, AirProtocol, \
-	llrp_data2xml, LLRPMessageDict, ReaderConfigurationError, EXT_TYPE
+	llrp_data2xml, LLRPMessageDict, ReaderConfigurationError, EXT_TYPE, IPJ_VEND
 from binascii import hexlify
 from .util import BITMASK
 import socket # for connecting to the reader via TCP/IP
@@ -194,6 +194,7 @@ class LLRPClient(object):
 		self.freq_table = []
 		self.mode_table = []
 		self.reader_mode = None
+		self.is_impinj = False
 		
 		self.expectingRemainingBytes = 0
 		self.partialData = ''
@@ -226,6 +227,9 @@ class LLRPClient(object):
 		self.getCapabilities()
 		
 		# enable impinj extensions when necessary
+		if not self.is_impinj:
+			self.impinj_report_selection = {}
+		
 		if self.impinj_report_selection:
 			self.enableImpinjFeatures()
 	
@@ -303,6 +307,9 @@ class LLRPClient(object):
 			self.reader_mode = list(modes.values())[0]
 
 		logger.debug('using reader mode: %s', self.reader_mode)
+
+		# check if Impinj reader
+		self.is_impinj = capdict['GeneralDeviceCapabilities']['DeviceManufacturerName'] == IPJ_VEND
 	
 	def getCapabilities(self):
 		'''Requests reader capabilities and parses them to 
@@ -624,6 +631,7 @@ class LLRPClient(object):
 			idx = v['Index']-1 # index starts with 1 in the reader power table
 			power_table[idx] = int(v['TransmitPowerValue']) / 100.0
 		
+		power_table.sort()
 		return power_table
 	
 	def parseFreqTable(self, uhfbandcap):

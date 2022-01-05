@@ -3,7 +3,7 @@ try:
 	import Tkinter as tk # for building the gui - Python 2
 except ImportError:
 	import tkinter as tk # for building the gui - # Python 3
-from sllurp.reader import R420_EU, ARU2400 # for controlling the reader
+from sllurp.reader import R420, ARU2400 # for controlling the reader
 
 class InventoryApp(object):
 	'''Main window of the application
@@ -70,11 +70,12 @@ class InventoryApp(object):
 	def buildSettings(self):
 		row = 2
 		# tx power
+		pows = self.reader.power_table
 		row += 1
 		self.power = tk.DoubleVar()
-		self.power.set(self.reader.power_table[-1])
+		self.power.set(pows[-1])
 		tk.Label(self.conf, text='Tx power [dBm]').grid(row=row, column=0, sticky=tk.W)
-		tk.Scale(self.conf, from_=self.reader.power_table[0], to=self.reader.power_table[-1], resolution=0.25, variable=self.power, orient=tk.HORIZONTAL).grid(row=row, column=1, sticky=tk.W+tk.E)
+		tk.Scale(self.conf, from_=pows[0], to=pows[-1], resolution=pows[1]-pows[0], variable=self.power, orient=tk.HORIZONTAL).grid(row=row, column=1, sticky=tk.W+tk.E)
 		# frequency
 		row += 1
 		self.freq = tk.DoubleVar()
@@ -115,7 +116,7 @@ class InventoryApp(object):
 		# antennas
 		row += 1
 		self.antennas = tk.StringVar()
-		self.antennas.set('auto')
+		self.antennas.set('all')
 		tk.Label(self.conf, text='Antennas').grid(row=row, column=0, sticky=tk.W)
 		tk.Entry(self.conf, textvariable=self.antennas).grid(row=row, column=1, sticky=tk.W)
 		
@@ -141,14 +142,15 @@ class InventoryApp(object):
 			self.btnInventory.config(state=tk.DISABLED)
 	
 	def inventory(self):
-		self.tagsHeader.set('')
+		self.tagsHeader.set('') # clear summary
+		self.tagInfo.set('') # clear selected tag infos
 		self.tagsDetected.delete(0, tk.END) # clear list
 		if not self.reader:
 			return
 		
 		# parse antenna ports from string
 		antStr = self.antennas.get()
-		antennas = (0,) if 'auto' in antStr else tuple(int(a) for a in antStr.split(','))
+		antennas = (0,) if 'all' in antStr else tuple(int(a) for a in antStr.split(','))
 
 		# inventory with settings
 		settings = {
@@ -196,4 +198,4 @@ class InventoryApp(object):
 			self.tagInfo.set(infos)
 
 if __name__ == '__main__':
-	InventoryApp(R420_EU)
+	InventoryApp(R420)

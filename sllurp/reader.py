@@ -5,7 +5,7 @@ import threading # for making live tag reports non-blocking
 Classes for specific reader implementations
 '''
 
-class R420(LLRPClient):
+class Reader(LLRPClient):
 	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
 		''':param ip: IP address of the reader
 		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.
@@ -85,16 +85,13 @@ class R420(LLRPClient):
 			# nothing to filter
 			return trp
 	
-	def detectTags(self, powerDBm=31.5, freqMHz=866.9, duration=0.5, mode=1002, session=2, searchmode=0, population=1, antennas=(0,), rounds=1):
+	def detectTags(self, powerDBm, freqMHz, mode, duration=0.5, session=2, searchmode=0, population=1, antennas=(0,), rounds=1):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
-		:param powerDBm: tx power in dBm. 
-			Valid values are 10...31.5 in 0.25 steps
-		:param freqMHz: frequency band in MHz. 
-			Valid values for EU are 865.7, 866.3, 866.9, 867.5
-		:param mode: preset mode identifier which defines tari, miller, etc. 
-			Valid values are 1002, 1000, 5, 3, 2, 1, 0
+		:param powerDBm: tx power in dBm
+		:param freqMHz: frequency band in MHz
+		:param mode: preset mode identifier which defines tari, miller, etc.
 		:param session: depending on the searchmode has different behaviour.
 		:param searchmode: impinj specific muting mode
 			Valid values are 0 (not enabled), 1, 2, 3
@@ -145,16 +142,22 @@ class R420(LLRPClient):
 		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
 	
-	def startLiveReports(self, reportCallback, powerDBm=31.5, freqMHz=866.9, duration=1.0, mode=1002, session=2, searchmode=0, population=1, antennas=(0,)):
+	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, duration=1., session=2, searchmode=0, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and 
 		reports tagreports periodically through a callback function.
 		
 		:param reportCallback: call back function which is called every 
-			"duration" seconds with the tagreport as argument
+			"duration" seconds with the tagreport as argument or 
+			for every detected tag if "duration" <= 0
 		the other parameters are the same as in "detectTags"
 		'''
 		# update settings
-		self.report_interval = duration
+		if duration <= 0:
+			self.report_interval = None
+			self.report_every_n_tags = 1 # report every tag
+			self.report_timeout = 1. # in case tags don't respond
+		else:
+			self.report_interval = duration
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
 		self.mode_identifier = mode
@@ -218,48 +221,14 @@ class R420(LLRPClient):
 		return epcs
 
 
-class ARU2400(R420):
-	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
-		''':param ip: IP address of the reader
-		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.
-			Other tags will not be reported when used.
-		:param excludeEPCs: string or list of strings containing EPCs to ignore during inventory.
-			Tags with these EPCs will not be reported when used.
-		'''
-		# epc filters
-		self.includeEPCs = includeEPCs
-		self.excludeEPCs = excludeEPCs
-		
-		# init common llrp stuff
-		LLRPClient.__init__(self, ip, *args, **kwargs)
-		
-		# select what data we want to get from the reader
-		self.report_selection = {
-			'EnableROSpecID': False,
-			'EnableSpecIndex': False,
-			'EnableInventoryParameterSpecID': False,
-			'EnableAntennaID': True,
-			'EnableChannelIndex': True,
-			'EnablePeakRRSI': True,
-			'EnableFirstSeenTimestamp': True,
-			'EnableLastSeenTimestamp': True,
-			'EnableTagSeenCount': True,
-			'EnableAccessSpecID': False}
-		
-		# connect to reader
-		self.startConnection()
-		print('Connected to reader')
-	
+class ARU2400(Reader):	
 	def detectTags(self, powerDBm=27., freqMHz=866.9, duration=0.5, mode=12, session=2, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
-		:param powerDBm: tx power in dBm. 
-			Valid values are 10...31.5 in 0.25 steps
-		:param freqMHz: frequency band in MHz. 
-			Valid values for EU are 865.7, 866.3, 866.9, 867.5
-		:param mode: preset mode identifier which defines tari, miller, etc. 
-			Valid values are 1002, 1000, 5, 3, 2, 1, 0
+		:param powerDBm: tx power in dBm
+		:param freqMHz: frequency band in MHz
+		:param mode: preset mode identifier which defines tari, miller, etc.
 		:param session: controls tag muting behaviour
 		:param population: number of tags estimated in the readers scope
 		:antennas: tuple of antenna ports to use for inventory.
@@ -328,34 +297,13 @@ class ARU2400(R420):
 		self.round += 1
 
 
-class FX9600(R420):
-	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
-		''':param ip: IP address of the reader
-		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.
-			Other tags will not be reported when used.
-		:param excludeEPCs: string or list of strings containing EPCs to ignore during inventory.
-			Tags with these EPCs will not be reported when used.
-		'''
-		# epc filters
-		self.includeEPCs = includeEPCs
-		self.excludeEPCs = excludeEPCs
-		
-		# init common llrp stuff
-		LLRPClient.__init__(self, ip, *args, **kwargs)
-		
-		# select what data we want to get from the reader
-		self.report_selection = {
-			'EnableROSpecID': False,
-			'EnableSpecIndex': False,
-			'EnableInventoryParameterSpecID': False,
-			'EnableAntennaID': True,
-			'EnableChannelIndex': True,
-			'EnablePeakRRSI': True,
-			'EnableFirstSeenTimestamp': True,
-			'EnableLastSeenTimestamp': True,
-			'EnableTagSeenCount': True,
-			'EnableAccessSpecID': False}
-		
-		# connect to reader
-		self.startConnection()
-		print('Connected to reader')
+class R420(Reader):
+	def detectTags(self, powerDBm=31.5, freqMHz=866.9, mode=1002, *args, **kwargs):
+		return super().detectTags(powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, *args, **kwargs)
+
+R420_EU = Reader # for backward compatibility
+
+
+class FX9600(Reader):
+	def detectTags(self, powerDBm=29.2, freqMHz=866.3, mode=11, *args, **kwargs):
+		return super().detectTags(powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, *args, **kwargs)
