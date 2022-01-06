@@ -63,7 +63,8 @@ class Reader(LLRPClient):
 		'''search nearest matching power in table
 		:param powDBm: power in dBm
 		:returns: table index'''
-		return self.nearestIndex(self.power_table, powDBm)+1
+		iPower = self.nearestIndex(self.power_table, powDBm)
+		return self.power_idx_table[iPower]
 	
 	def getChannelIndex(self, freqMHz):
 		'''search nearest matching channel in table

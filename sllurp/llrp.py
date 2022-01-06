@@ -191,6 +191,7 @@ class LLRPClient(object):
 		self.transport = Transport()
 		self.capabilities = {}
 		self.power_table = []
+		self.power_idx_table = []
 		self.freq_table = []
 		self.mode_table = []
 		self.reader_mode = None
@@ -269,12 +270,12 @@ class LLRPClient(object):
 		
 		# parse available transmit power entries, set self.power
 		bandcap = capdict['RegulatoryCapabilities']['UHFBandCapabilities']
-		self.power_table = self.parsePowerTable(bandcap)
+		self.parsePowerTable(bandcap)
 		logger.debug('power_table: %s', self.power_table)
 		# check for valid power index
-		maxPower = self.power_table.index(max(self.power_table))+1
-		if self.power > maxPower or self.power < 0:
-			self.power = maxPower
+		maxPowerIdx = max(self.power_idx_table)
+		if self.power > maxPowerIdx or self.power < 0:
+			self.power = maxPowerIdx
 			logger.info('Wrong power index %d specified. Setting to max power', self.power)
 		
 		# parse available frequencies
@@ -617,22 +618,20 @@ class LLRPClient(object):
 				'AccessSpecID': accessSpecID
 			}}))
 	
-	@staticmethod
-	def parsePowerTable(uhfbandcap):
+	def parsePowerTable(self, uhfbandcap):
 		'''Parse the transmit power table.
 		:param uhfbandcap: Capability dictionary from
 			self.capabilities['RegulatoryCapabilities']['UHFBandCapabilities']
-		:returns: list of dBm values
 		'''
-		bandtbl = {k: v for k, v in uhfbandcap.items()
-				   if k.startswith('TransmitPowerLevelTableEntry')}
-		power_table = [0]*len(bandtbl)
-		for v in bandtbl.values():
-			idx = v['Index']-1 # index starts with 1 in the reader power table
-			power_table[idx] = int(v['TransmitPowerValue']) / 100.0
+		self.power_table = []
+		self.power_idx_table = []
+		for k, v in uhfbandcap.items():
+			if k.startswith('TransmitPowerLevelTableEntry'):
+				self.power_table.append(int(v['TransmitPowerValue'])/100.)
+				self.power_idx_table.append(int(v['Index']))
 		
-		power_table.sort()
-		return power_table
+		self.power_table.sort()
+		self.power_idx_table.sort()
 	
 	def parseFreqTable(self, uhfbandcap):
 		'''Parse the frequency table.
