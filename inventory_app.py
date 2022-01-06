@@ -15,7 +15,7 @@ class InventoryApp(object):
 		self.tags = []
 		
 		# initially place in the middle of the screen
-		sizeX, sizeY = 640, 360
+		sizeX, sizeY = 750, 500
 		screenX, screenY = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
 		self.root.geometry('{}x{}+{}+{}'.format(sizeX, sizeY, 
 			int(screenX/2-sizeX/2), int(screenY/2-sizeY/2)))
@@ -69,6 +69,7 @@ class InventoryApp(object):
 	
 	def buildSettings(self):
 		row = 2
+		
 		# tx power
 		pows = self.reader.power_table
 		row += 1
@@ -76,43 +77,56 @@ class InventoryApp(object):
 		self.power.set(pows[-1])
 		tk.Label(self.conf, text='Tx power [dBm]').grid(row=row, column=0, sticky=tk.W)
 		tk.Scale(self.conf, from_=pows[0], to=pows[-1], resolution=pows[1]-pows[0], variable=self.power, orient=tk.HORIZONTAL).grid(row=row, column=1, sticky=tk.W+tk.E)
+		
 		# frequency
 		row += 1
 		self.freq = tk.DoubleVar()
 		self.freq.set(self.reader.freq_table[0])
 		tk.Label(self.conf, text='Frequency [MHz]').grid(row=row, column=0, sticky=tk.W)
 		tk.OptionMenu(self.conf, self.freq, *(self.reader.freq_table)).grid(row=row, column=1, sticky=tk.W+tk.E)
+		
 		# preset mode
 		row += 1
+		modeID = self.reader.mode_table[0]
 		self.presetmode = tk.IntVar()
-		self.presetmode.set(self.reader.mode_table[0])
+		self.presetmode.set(modeID)
 		tk.Label(self.conf, text='Preset mode').grid(row=row, column=0, sticky=tk.W)
-		tk.OptionMenu(self.conf, self.presetmode, *(self.reader.mode_table)).grid(row=row, column=1, sticky=tk.W+tk.E)
+		tk.OptionMenu(self.conf, self.presetmode, *(self.reader.mode_table), command=self.displayModeInfos).grid(row=row, column=1, sticky=tk.W+tk.E)
+		# preset mode infos
+		row += 1
+		self.modeInfo = tk.StringVar()
+		self.displayModeInfos(modeID)
+		tk.Label(self.conf, textvariable=self.modeInfo, anchor=tk.W, justify=tk.LEFT).grid(row=row, column=1, sticky=tk.W+tk.E)
+		
+		# search mode
 		if self.reader.impinj_report_selection:
-			# search mode
 			row += 1
 			self.searchmode = tk.IntVar()
 			self.searchmode.set(2)
 			tk.Label(self.conf, text='Search mode').grid(row=row, column=0, sticky=tk.W)
 			tk.OptionMenu(self.conf, self.searchmode, 0, 1, 2, 3).grid(row=row, column=1, sticky=tk.W+tk.E)
+		
 		# session
 		row += 1
 		self.session = tk.IntVar()
 		self.session.set(1)
 		tk.Label(self.conf, text='Session').grid(row=row, column=0, sticky=tk.W)
 		tk.OptionMenu(self.conf, self.session, 0, 1, 2, 3).grid(row=row, column=1, sticky=tk.W+tk.E)
+		
 		# tag population
 		row += 1
 		self.population = tk.IntVar()
 		self.population.set(4)
 		tk.Label(self.conf, text='Tag population').grid(row=row, column=0, sticky=tk.W)
 		tk.Entry(self.conf, textvariable=self.population).grid(row=row, column=1, sticky=tk.W)
+		
 		# inventory duration
 		row += 1
 		self.duration = tk.DoubleVar()
 		self.duration.set(1.0)
 		tk.Label(self.conf, text='Inventory duration [s]').grid(row=row, column=0, sticky=tk.W)
 		tk.Entry(self.conf, textvariable=self.duration).grid(row=row, column=1, sticky=tk.W)
+		
 		# antennas
 		row += 1
 		self.antennas = tk.StringVar()
@@ -124,6 +138,68 @@ class InventoryApp(object):
 		self.btnInventory = tk.Button(self.conf, text='Inventory', command=self.inventory, state=tk.DISABLED)
 		self.btnInventory.grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
 		self.conf.rowconfigure(row, weight=1)
+	
+	def displayModeInfos(self, modeID):
+		'''
+		Displays mode infos in the self.modeInfo label
+
+		:param modeID: preset mode identifier
+		'''
+		if not self.reader:
+			return
+		
+		# get mode infos
+		modes = self.reader.capabilities['RegulatoryCapabilities']['UHFBandCapabilities']['UHFRFModeTable']
+		modeInfos = next(v for v in modes.values() if v['ModeIdentifier'] == modeID)
+
+		# convert to understandable data
+		infos = ''
+		
+		# C: EPC HAG T&C conformance flag
+		# skip, as not interesting
+		
+		# M: Spectral mask indicator
+		ms = {
+			0: 'unknown', 
+			1: 'single reader', 
+			2: 'multi reader', 
+			3: 'dense reader'
+		}
+		m = ms[modeInfos['M']]
+		infos += 'Spectral mask: {}\n'.format(m)
+		
+		# PIE: 1000 times the data1 to data0 symbol length ratio (1.5...2.0)
+		pie = modeInfos['PIE']
+		infos += 'PIE ratio: {}\n'.format(pie/1000)
+
+		# Min/Step/Max Tari: tari time in ns (duration of data0 symbol)
+		minTari, stepTari, maxTari = modeInfos['MinTari'], modeInfos['StepTari'], modeInfos['MaxTari']
+		infos += 'Tari: '
+		if maxTari != minTari:
+			infos += '{}...{} ({} step) us\n'.format(minTari/1000, maxTari/1000, stepTari/1000)
+		else:
+			infos += '{} us\n'.format(minTari/1000)
+		
+		# R: DR-value. Together with BDR, defines TRcal (TRcal = DR/BDR)
+		# skip, as not interesting
+
+		# BDR: Backscatter data rate (bps), i.e. tag frequency (40000...640000)
+		blf = modeInfos['BDR']
+		infos += 'Tag frequency: {} kHz\n'.format(blf/1000)
+
+		# Mod: Modulation/Encoding
+		mods = {
+			0: 'FM0', 
+			1: 'Miller2', 
+			2: 'Miller4', 
+			3: 'Miller8'
+		}
+		mod = mods[modeInfos['Mod']]
+		infos += 'Tag modulation: {}'.format(mod)
+
+		# put in label
+		self.modeInfo.set(infos)
+
 	
 	def connect(self):
 		if not self.reader:
@@ -156,8 +232,8 @@ class InventoryApp(object):
 		settings = {
 			'powerDBm': self.power.get(), 
 			'freqMHz': self.freq.get(), 
-			'duration': self.duration.get(), 
 			'mode': self.presetmode.get(), 
+			'duration': self.duration.get(), 
 			'session': self.session.get(), 
 			'population': self.population.get(), 
 			'antennas': antennas}
