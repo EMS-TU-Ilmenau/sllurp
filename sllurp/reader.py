@@ -306,5 +306,5 @@ R420_EU = Reader # for backward compatibility
 
 
 class FX9600(Reader):
-	def detectTags(self, powerDBm=29.2, freqMHz=866.3, mode=11, *args, **kwargs):
+	def detectTags(self, powerDBm=29.2, freqMHz=866.3, mode=11, session=0, *args, **kwargs):
 		return super().detectTags(powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, *args, **kwargs)
