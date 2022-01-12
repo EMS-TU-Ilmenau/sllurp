@@ -183,9 +183,9 @@ class InventoryApp(object):
 		# R: DR-value. Together with BDR, defines TRcal (TRcal = DR/BDR)
 		# skip, as not interesting
 
-		# BDR: Backscatter data rate (bps), i.e. tag frequency (40000...640000)
+		# BDR: Backscatter data rate (bps), i.e. tag frequency divided by modulation factor
 		blf = modeInfos['BDR']
-		infos += 'Tag frequency: {} kHz\n'.format(blf/1000)
+		infos += 'Tag data rate: {} bps\n'.format(blf/1000)
 
 		# Mod: Modulation/Encoding
 		mods = {
