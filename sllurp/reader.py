@@ -1,4 +1,4 @@
-from .llrp import LLRPClient # low level reader protocoll
+from .llrp import LLRPClient, LLRPMessage # low level reader protocoll
 import threading # for making live tag reports non-blocking
 
 '''
@@ -32,9 +32,6 @@ class Reader(LLRPClient):
 			'EnableLastSeenTimestamp': True,
 			'EnableTagSeenCount': True,
 			'EnableAccessSpecID': False}
-		self.impinj_report_selection = {
-			'ImpinjEnablePeakRSSI': True,
-			'ImpinjEnableRFPhaseAngle': True}
 		
 		# connect to reader
 		self.startConnection()
@@ -86,16 +83,14 @@ class Reader(LLRPClient):
 			# nothing to filter
 			return trp
 	
-	def detectTags(self, powerDBm, freqMHz, mode, duration=0.5, session=2, searchmode=0, population=1, antennas=(0,), rounds=1):
+	def detectTags(self, powerDBm, freqMHz, mode, duration=0.5, session=2, population=1, antennas=(0,), rounds=1):
 		'''starts the readers inventoring process and return the found tags.
 		
 		:param duration: gives the reader that much time in seconds to find tags
 		:param powerDBm: tx power in dBm
 		:param freqMHz: frequency band in MHz
 		:param mode: preset mode identifier which defines tari, miller, etc.
-		:param session: depending on the searchmode has different behaviour.
-		:param searchmode: impinj specific muting mode
-			Valid values are 0 (not enabled), 1, 2, 3
+		:param session: depending on the searchmode has different behaviour
 		:param population: number of tags estimated in the readers scope
 		:antennas: tuple of antenna ports to use for inventory.
 			Set to (0,) to scan automatically over all
@@ -107,7 +102,6 @@ class Reader(LLRPClient):
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
 		self.mode_identifier = mode
-		self.impinj_searchmode = searchmode
 		self.session = session
 		self.population = population
 		self.antennas = antennas
@@ -143,7 +137,7 @@ class Reader(LLRPClient):
 		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
 	
-	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, duration=1., session=2, searchmode=0, population=1, antennas=(0,)):
+	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, duration=1., session=2, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and 
 		reports tagreports periodically through a callback function.
 		
@@ -162,7 +156,6 @@ class Reader(LLRPClient):
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
 		self.mode_identifier = mode
-		self.impinj_searchmode = searchmode
 		self.session = session
 		self.population = population
 		self.antennas = antennas
@@ -299,12 +292,80 @@ class ARU2400(Reader):
 
 
 class R420(Reader):
-	def detectTags(self, powerDBm=31.5, freqMHz=866.9, mode=1002, *args, **kwargs):
-		return super().detectTags(powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, *args, **kwargs)
+	'''
+	Impinj specific features
+	'''
+	def __init__(self, *args, **kwargs):
+		# Impinj properties
+		self.impinj_report_selection = {
+			'ImpinjEnablePeakRSSI': True,
+			'ImpinjEnableRFPhaseAngle': True
+		}
+		self.impinj_searchmode = 0
+
+		super().__init__(*args, **kwargs) # connect to reader
+		self.enableImpinjFeatures() # enable Impinj features
+	
+	def enableImpinjFeatures(self):
+		'''Enables Impinj specific extensions.'''
+		self.send_IMPINJ_ENABLE_EXTENSIONS()
+		self.readLLRPMessage('IMPINJ_ENABLE_EXTENSIONS_RESPONSE')
+	
+	def send_IMPINJ_ENABLE_EXTENSIONS(self):
+		self.sendLLRPMessage(LLRPMessage(msgdict={
+			'ImpinjEnableExtensions': {
+				'Ver':  1,
+				'Type': 1023,
+				'ID':   0
+			}}))
+	
+	def getROSpec(self, **kwargs):
+		return super().getROSpec(
+			impinj_report_selection=self.impinj_report_selection, 
+			impinj_searchmode=self.impinj_searchmode, 
+			**kwargs
+		)
+
+	def detectTags(self, powerDBm=31.5, freqMHz=866.9, mode=1002, searchmode=0, **kwargs):
+		'''
+		:param searchmode: Impinj specific parameter which controls Tag muting 
+			in combination with session. Can be 0 (disabled), 1, 2 or 3
+		'''
+		self.impinj_searchmode = searchmode # update searchmode
+		return super().detectTags(powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, **kwargs)
+	
+	def startLiveReports(self, reportCallback, powerDBm=31.5, freqMHz=866.9, mode=1002, searchmode=0, **kwargs):
+		self.impinj_searchmode = searchmode # update searchmode
+		return super().startLiveReports(reportCallback, powerDBm=powerDBm, freqMHz=freqMHz, mode=mode,**kwargs)
 
 R420_EU = Reader # for backward compatibility
 
 
 class FX9600(Reader):
-	def detectTags(self, powerDBm=29.2, freqMHz=866.3, mode=11, session=0, *args, **kwargs):
-		return super().detectTags(powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, session=session, *args, **kwargs)
+	'''
+	Motorola/Zebra specific features
+	'''
+	def __init__(self, *args, **kwargs):
+		# make antenna switching actual useful.
+		# default is 1000 milliseconds dwell time per antenna.
+		# switch antenna every 2 inventoy rounds (like Impinj) instead.
+		self.moto_antenna_conf = {
+			'MotoAntennaStopCondition': {
+				'AntennaStopTrigger': 1, 
+				'AntennaStopConditionValue': 2
+			}
+		}
+
+		super().__init__(*args, **kwargs) # connect to reader
+	
+	def getROSpec(self, **kwargs):
+		return super().getROSpec(
+			moto_antenna_conf=self.moto_antenna_conf, 
+			**kwargs
+		)
+
+	def detectTags(self, powerDBm=29.2, freqMHz=866.3, mode=21, session=0, **kwargs):
+		return super().detectTags(powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, session=session, **kwargs)
+	
+	def startLiveReports(self, reportCallback, powerDBm=29.2, freqMHz=866.3, mode=21, session=0, **kwargs):
+		return super().startLiveReports(reportCallback, powerDBm=powerDBm, freqMHz=freqMHz, mode=mode, session=session, **kwargs)

@@ -3,14 +3,22 @@ try:
 	import Tkinter as tk # for building the gui - Python 2
 except ImportError:
 	import tkinter as tk # for building the gui - # Python 3
-from sllurp.reader import R420, ARU2400 # for controlling the reader
+from sllurp.reader import Reader, R420, ARU2400, FX9600 # for controlling readers
+
+
+readerClasses = {
+	'Generic': Reader, 
+	'R420': R420, 
+	'ARU2400': ARU2400, 
+	'FX9600': FX9600
+}
+
 
 class InventoryApp(object):
 	'''Main window of the application
 	'''
-	def __init__(self, readerClass):
+	def __init__(self):
 		self.root = tk.Tk()
-		self.readerClass = readerClass
 		self.reader = None
 		self.tags = []
 		
@@ -35,6 +43,12 @@ class InventoryApp(object):
 		self.ip.set('192.168.4.2')
 		tk.Label(self.conf, text='IP address').grid(row=row, column=0, sticky=tk.W)
 		tk.Entry(self.conf, textvariable=self.ip).grid(row=row, column=1, sticky=tk.W)
+		# reader model
+		row += 1
+		self.model = tk.StringVar()
+		self.model.set('Generic')
+		tk.Label(self.conf, text='Reader model').grid(row=row, column=0, sticky=tk.W)
+		tk.OptionMenu(self.conf, self.model, *(readerClasses.keys())).grid(row=row, column=1, sticky=tk.W+tk.E)
 		#  button for connect
 		row += 1
 		self.btnConnect = tk.Button(self.conf, text='Connect reader', command=self.connect)
@@ -68,7 +82,7 @@ class InventoryApp(object):
 		self.root.mainloop()
 	
 	def buildSettings(self):
-		row = 2
+		row = 3
 		
 		# tx power
 		pows = self.reader.power_table
@@ -99,7 +113,7 @@ class InventoryApp(object):
 		tk.Label(self.conf, textvariable=self.modeInfo, anchor=tk.W, justify=tk.LEFT).grid(row=row, column=1, sticky=tk.W+tk.E)
 		
 		# search mode
-		if self.reader.impinj_report_selection:
+		if isinstance(self.reader, R420):
 			row += 1
 			self.searchmode = tk.IntVar()
 			self.searchmode.set(2)
@@ -204,6 +218,7 @@ class InventoryApp(object):
 	def connect(self):
 		if not self.reader:
 			try:
+				self.readerClass = readerClasses[self.model.get()]
 				self.reader = self.readerClass(self.ip.get())
 			except:
 				pass
@@ -236,8 +251,9 @@ class InventoryApp(object):
 			'duration': self.duration.get(), 
 			'session': self.session.get(), 
 			'population': self.population.get(), 
-			'antennas': antennas}
-		if self.reader.impinj_report_selection:
+			'antennas': antennas
+		}
+		if isinstance(self.reader, R420):
 			settings.update({'searchmode': self.searchmode.get()})
 		
 		self.tags = self.reader.detectTags(**settings)
@@ -274,4 +290,4 @@ class InventoryApp(object):
 			self.tagInfo.set(infos)
 
 if __name__ == '__main__':
-	InventoryApp(R420)
+	InventoryApp()

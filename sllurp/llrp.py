@@ -5,7 +5,7 @@ import pprint
 import struct
 from .llrp_proto import LLRPROSpec, LLRPError, Message_struct, \
 	Message_Type2Name, Capability_Name2Type, AirProtocol, \
-	llrp_data2xml, LLRPMessageDict, ReaderConfigurationError, EXT_TYPE, IPJ_VEND
+	llrp_data2xml, LLRPMessageDict, ReaderConfigurationError, EXT_TYPE
 from binascii import hexlify
 from .util import BITMASK
 import socket # for connecting to the reader via TCP/IP
@@ -156,9 +156,8 @@ class LLRPClient(object):
 	
 	def __init__(self, ip, antennas=(0,), power=0, channel=1, 
 				report_interval=0.1, report_every_n_tags=None, report_timeout=10.,
-				report_selection={}, impinj_report_selection={},
-				mode_index=None, mode_identifier=None, tari=None, 
-				session=2, population=1, impinj_searchmode=0, freq_hop_table_id=0):
+				report_selection={}, mode_index=None, mode_identifier=None, tari=None, 
+				session=2, population=1, freq_hop_table_id=0):
 		# settings
 		self.ip = ip # reader ip address
 		
@@ -176,16 +175,8 @@ class LLRPClient(object):
 		self.mode_index = mode_index # mode table index, OR...
 		self.mode_identifier = mode_identifier # mode name in table
 		self.tari = tari # is ignored on impinj readers / set through mode
-		self.impinj_searchmode = impinj_searchmode # impinj only
 		
 		self.report_selection = report_selection # what to report
-		self.impinj_report_selection = impinj_report_selection # impinj only
-		'''Example (Currently, only the fields below are implemented):
-		if not self.impinj_report_selection:
-			self.impinj_report_selection = {
-				'ImpinjEnablePeakRSSI': True,
-				'ImpinjEnableRFPhaseAngle': True}
-		'''
 		
 		# instance properties
 		self.transport = Transport()
@@ -195,14 +186,11 @@ class LLRPClient(object):
 		self.freq_table = []
 		self.mode_table = []
 		self.reader_mode = None
-		self.is_impinj = False
 		
 		self.expectingRemainingBytes = 0
 		self.partialData = ''
 		
 		self.lastReceivedMsg = None
-		self.disconnecting = False
-		self.rospec = None
 		
 		self.msgCallbacks = defaultdict(list)
 	
@@ -226,22 +214,17 @@ class LLRPClient(object):
 		
 		# get reader capabilities
 		self.getCapabilities()
-		
-		# enable impinj extensions when necessary
-		if not self.is_impinj:
-			self.impinj_report_selection = {}
-		
-		if self.impinj_report_selection:
-			self.enableImpinjFeatures()
 	
 	def disconnect(self):
 		self.transport.disconnect()
 	
 	def __del__(self):
 		# close connection
-		if self.transport.isConnected:
+		try:
 			self.stopPolitely()
 			self.disconnect()
+		except:
+			pass
 	
 	def addMsgCallback(self, msg, cb):
 		'''Adds a function callback which is called for a 
@@ -310,7 +293,7 @@ class LLRPClient(object):
 		logger.debug('using reader mode: %s', self.reader_mode)
 
 		# check if Impinj reader
-		self.is_impinj = capdict['GeneralDeviceCapabilities']['DeviceManufacturerName'] == IPJ_VEND
+		self.vendor = capdict['GeneralDeviceCapabilities']['DeviceManufacturerName']
 	
 	def getCapabilities(self):
 		'''Requests reader capabilities and parses them to 
@@ -324,16 +307,17 @@ class LLRPClient(object):
 			logger.exception('Capabilities mismatch')
 			raise err
 	
-	def enableImpinjFeatures(self):
-		'''Enables Impinj specific extensions.'''
-		self.send_IMPINJ_ENABLE_EXTENSIONS()
-		self.readLLRPMessage('IMPINJ_ENABLE_EXTENSIONS_RESPONSE')
-	
-	def getROSpec(self):
+	def getROSpec(self, *args, **kwargs):
 		logger.debug('Creating ROSpec')
 		self.parseCapabilities(self.capabilities) # check if parameters are valid
 		# create an ROSpec to define the reader's inventorying behavior
-		rospec = LLRPROSpec(1, 
+		rospec = LLRPROSpec(1, *args, **kwargs)
+		logger.debug('ROSpec: %s', rospec)
+		return rospec
+	
+	def startInventory(self):
+		'''Add a ROSpec to the reader and enable it.'''
+		rospec = self.getROSpec(
 			antennas=self.antennas, 
 			power=self.power, 
 			channel=self.channel, 
@@ -341,19 +325,12 @@ class LLRPClient(object):
 			report_every_n_tags=self.report_every_n_tags, 
 			report_timeout=self.report_timeout,
 			report_selection=self.report_selection, 
-			impinj_report_selection=self.impinj_report_selection,
 			mode_index=self.mode_index or self.reader_mode['ModeIdentifier'],
 			tari=self.tari or self.reader_mode['MaxTari'],
 			session=self.session,
 			population=self.population,
-			impinj_searchmode=self.impinj_searchmode, 
-			hopTableID=self.hopTableID)
-		logger.debug('ROSpec: %s', rospec)
-		return rospec
-	
-	def startInventory(self):
-		'''Add a ROSpec to the reader and enable it.'''
-		rospec = self.getROSpec()['ROSpec']
+			hopTableID=self.hopTableID
+		)['ROSpec']
 		logger.info('starting inventory')
 		# add rospec
 		self.send_ADD_ROSPEC(rospec)
@@ -542,14 +519,6 @@ class LLRPClient(object):
 				'Type': 1,
 				'ID':   0,
 				'RequestedData': Capability_Name2Type['All']
-			}}))
-	
-	def send_IMPINJ_ENABLE_EXTENSIONS(self):
-		self.sendLLRPMessage(LLRPMessage(msgdict={
-			'ImpinjEnableExtensions': {
-				'Ver':  1,
-				'Type': 1023,
-				'ID':   0
 			}}))
 	
 	def send_ADD_ROSPEC(self, roSpec):

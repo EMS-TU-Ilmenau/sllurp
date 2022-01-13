@@ -2224,6 +2224,8 @@ def encode_C1G2InventoryCommand(par):
 	# XXX custom parameters
 	if 'ImpinjInventorySearchMode' in par:
 		data += encode('ImpinjInventorySearchMode')(par['ImpinjInventorySearchMode'])
+	if 'MotoAntennaConfig' in par:
+		data += encode('MotoAntennaConfig')(par['MotoAntennaConfig'])
 	
 	data = struct.pack(msg_header, msgtype,
 					len(data) + struct.calcsize(msg_header)) + data
@@ -2979,10 +2981,25 @@ Message_struct['ParameterError'] = {
 
 
 #
+# Custom extensions
+#
+EXT_TYPE = 1023
+
+def pack_data(msg, data):
+	'''
+	Encodes header of message and data
+	'''
+	ms = Message_struct[msg]
+	msg_header = '!HHII'
+	data = struct.pack(msg_header, ms['type'], 
+		len(data) + struct.calcsize(msg_header), 
+		ms['vendorID'], ms['subtype']) + data
+	
+	return data
+
+#
 # Impinj specific protocol extentions
 #
-
-EXT_TYPE = 1023
 IPJ_VEND = 25882
 
 # Impinj_Octane_LLRP 6.1.1 IMPINJ_ENABLE_EXTENSIONS
@@ -3025,22 +3042,12 @@ Message_struct['IMPINJ_ENABLE_EXTENSIONS_RESPONSE'] = {
 
 # Impinj_Octane_LLRP 6.2.30 ImpinjTagReportContentSelector Parameter
 def encode_ImpinjTagReportContentSelector(par):
-	msgtype = Message_struct['ImpinjTagReportContentSelector']['type']
-	msgsubtype = Message_struct['ImpinjTagReportContentSelector']['subtype']
-	msgvendor = Message_struct['ImpinjTagReportContentSelector']['vendorID']
-	
-	msg_header = '!HHII'
-	
 	data = bytes()
 	for field in Message_struct['ImpinjTagReportContentSelector']['fields']:
 		# encode each parameter
 		data += encode(field)(field in par and par[field])
 	
-	data = struct.pack(msg_header, msgtype,
-					len(data) + struct.calcsize(msg_header), 
-					msgvendor, msgsubtype) + data
-	
-	return data
+	return pack_data('ImpinjTagReportContentSelector', data)
 
 Message_struct['ImpinjTagReportContentSelector'] = {
 	'type': EXT_TYPE,
@@ -3055,19 +3062,11 @@ Message_struct['ImpinjTagReportContentSelector'] = {
 
 def encode_ImpinjEnableTagReportParameter(par, enable):
 	# generic function to enable or disable impinj specific tag report parameters
-	msgtype = Message_struct[par]['type']
-	msgsubtype = Message_struct[par]['subtype']
-	msgvendor = Message_struct[par]['vendorID']
-	
-	msg_header = '!HHII'
-	
+	# encode enable
 	active = 1 if enable else 0
 	data = struct.pack('!H', active)
-	data = struct.pack(msg_header, msgtype,
-					len(data) + struct.calcsize(msg_header), 
-					msgvendor, msgsubtype) + data
 	
-	return data
+	return pack_data(par, data)
 
 # Impinj_Octane_LLRP 6.2.32 ImpinjEnableRFPhaseAngle Parameter
 def encode_ImpinjEnableRFPhaseAngle(par):
@@ -3099,18 +3098,8 @@ Message_struct['ImpinjEnablePeakRSSI'] = {
 
 # Impinj_Octane_LLRP 6.2.3 ImpinjInventorySearchMode Parameter
 def encode_ImpinjInventorySearchMode(par):
-	msgtype = Message_struct['ImpinjInventorySearchMode']['type']
-	msgsubtype = Message_struct['ImpinjInventorySearchMode']['subtype']
-	msgvendor = Message_struct['ImpinjInventorySearchMode']['vendorID']
-	
-	msg_header = '!HHII'
-	
-	data = struct.pack('!H', par) # encode searchmode
-	data = struct.pack(msg_header, msgtype,
-					len(data) + struct.calcsize(msg_header), 
-					msgvendor, msgsubtype) + data
-	
-	return data
+	data = struct.pack('!H', par) # encode searchmode	
+	return pack_data('ImpinjInventorySearchMode', data)
 
 Message_struct['ImpinjInventorySearchMode'] = {
 	'type': EXT_TYPE,
@@ -3120,6 +3109,84 @@ Message_struct['ImpinjInventorySearchMode'] = {
 		'InventorySearchMode'
 	],
 	'encode': encode_ImpinjInventorySearchMode
+}
+
+#
+# Zebra/Motorola specific protocol extentions
+# https://www.zebra.com/content/dam/zebra_new_ia/en-us/manuals/rfid/interface-control-guide-en.pdf
+#
+MOTO_VEND = 161
+
+# MotoAntennaConfig
+def encode_MotoAntennaConfig(par):
+	data = bytes()
+	# encode optional parameters
+	for field in Message_struct['MotoAntennaConfig']['fields']:
+		if field in par:
+			data += encode(field)(par[field])
+	
+	return pack_data('MotoAntennaConfig', data)
+
+Message_struct['MotoAntennaConfig'] = {
+	'type': EXT_TYPE,
+	'vendorID': MOTO_VEND,
+	'subtype': 703,
+	'fields': [
+		'MotoAntennaStopCondition', 
+		'MotoAntennaPhysicalPortConfig', 
+		'MotoAntennaQueryConfig'
+	],
+	'encode': encode_MotoAntennaConfig
+}
+
+# MotoAntennaStopCondition
+def encode_MotoAntennaStopCondition(par):
+	data = struct.pack('!BH', par['AntennaStopTrigger'], par['AntennaStopConditionValue'])
+	return pack_data('MotoAntennaStopCondition', data)
+
+Message_struct['MotoAntennaStopCondition'] = {
+	'type': EXT_TYPE,
+	'vendorID': MOTO_VEND,
+	'subtype': 704,
+	'fields': [
+		'AntennaStopTrigger', 
+		'AntennaStopConditionValue'
+	],
+	'encode': encode_MotoAntennaStopCondition
+}
+
+# MotoAntennaPhysicalPortConfig
+def encode_MotoAntennaPhysicalPortConfig(par):
+	data = struct.pack('!HH', par['PhysicalTransmitPort'], par['PhysicalReceivePort'])
+	return pack_data('MotoAntennaPhysicalPortConfig', data)
+
+Message_struct['MotoAntennaPhysicalPortConfig'] = {
+	'type': EXT_TYPE,
+	'vendorID': MOTO_VEND,
+	'subtype': 705,
+	'fields': [
+		'PhysicalTransmitPort', 
+		'PhysicalReceivePort'
+	],
+	'encode': encode_MotoAntennaPhysicalPortConfig
+}
+
+# MotoAntennaQueryConfig
+def encode_MotoAntennaQueryConfig(par):
+	enableS = 1 if par['S'] else 0
+	enableB = 1 if par['B'] else 0
+	data = struct.pack('!B', enableS << 7 | enableB << 6)
+	return pack_data('MotoAntennaQueryConfig', data)
+
+Message_struct['MotoAntennaQueryConfig'] = {
+	'type': EXT_TYPE,
+	'vendorID': MOTO_VEND,
+	'subtype': 710,
+	'fields': [
+		'S', 
+		'B'
+	],
+	'encode': encode_MotoAntennaQueryConfig
 }
 
 
@@ -3159,8 +3226,8 @@ class LLRPROSpec(dict):
 				antennas=(1,), power=80, channel=1, 
 				report_interval=1, report_every_n_tags=None, report_timeout=5,
 				report_selection={}, impinj_report_selection={}, 
-				mode_index=1, tari=16670,
-				session=2, population=1, impinj_searchmode=0, hopTableID=0):
+				mode_index=1, tari=16670, session=2, population=1, 
+				impinj_searchmode=0, hopTableID=0, moto_antenna_conf={}):
 		# Sanity checks
 		if msgid <= 0:
 			raise LLRPError('invalid ROSpec message ID {} (need >0)'.format(
@@ -3249,6 +3316,10 @@ class LLRPROSpec(dict):
 			# patch impinj searchmode
 			if impinj_report_selection:
 				antconf['C1G2InventoryCommand']['ImpinjInventorySearchMode'] = impinj_searchmode
+			
+			# patch Motorola/Zebra antenna switching
+			if moto_antenna_conf:
+				antconf['C1G2InventoryCommand']['MotoAntennaConfig'] = moto_antenna_conf
 			
 			ips['AntennaConfiguration'].append(antconf)
 		
