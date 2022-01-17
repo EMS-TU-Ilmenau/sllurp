@@ -266,7 +266,7 @@ def decode_GetReaderCapabilitiesResponse(data):
 		msg['RegulatoryCapabilities'] = ret
 	
 	if len(body):
-		msg['AirProtocolLLRPCapabilities'] = body
+		msg['AirProtocolLLRPCapabilities'] = {} # standard is not explicit here
 	
 	return msg
 
@@ -1132,7 +1132,7 @@ def decode_GeneralDeviceCapabilities(data):
 	par['HasUTCClockCapability'] = (flags & BIT(14) == BIT(14))
 	
 	pastVer = fmt_len + par['FirmwareVersionByteCount']
-	par['ReaderFirmwareVersion'] = body[fmt_len:pastVer]
+	par['ReaderFirmwareVersion'] = body[fmt_len:pastVer].decode()
 	body = body[pastVer:]
 	ret, body = decode('ReceiveSensitivityTableEntry')(body)
 	if ret:
@@ -2859,7 +2859,7 @@ def decode_LLRPStatus(data):
 		par['StatusCode'] = Error_Type2Name[code]
 	except KeyError:
 		logger.warning('Unknown field code %s', code)
-	par['ErrorDescription'] = body[offset:offset + n]
+	par['ErrorDescription'] = body[offset:offset + n].decode()
 	
 	# Decode parameters
 	ret, body = decode('FieldError')(body[offset + n:])
