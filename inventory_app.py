@@ -1,8 +1,12 @@
 #!/bin/bash
 try:
 	import Tkinter as tk # for building the gui - Python 2
+	import tkFileDialog # for opening a file with filedialog
 except ImportError:
 	import tkinter as tk # for building the gui - # Python 3
+	import tkinter.filedialog as tkFileDialog
+
+import json # for saving capabilities as JSON file
 from sllurp.reader import Reader, R420, ARU2400, FX9600 # for controlling readers
 
 
@@ -149,9 +153,12 @@ class InventoryApp(object):
 		tk.Entry(self.conf, textvariable=self.antennas).grid(row=row, column=1, sticky=tk.W)
 		
 		# button for inventory
-		self.btnInventory = tk.Button(self.conf, text='Inventory', command=self.inventory, state=tk.DISABLED)
-		self.btnInventory.grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
+		row += 1
+		tk.Button(self.conf, text='Inventory', command=self.inventory).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
 		self.conf.rowconfigure(row, weight=1)
+		# button for saving capabilities
+		row += 1
+		tk.Button(self.conf, text='Save capabilities', command=self.saveCapabilities).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
 	
 	def displayModeInfos(self, modeID):
 		'''
@@ -225,12 +232,6 @@ class InventoryApp(object):
 			else:
 				self.buildSettings()
 				self.btnConnect.config(state=tk.DISABLED)
-				self.btnInventory.config(state=tk.NORMAL)
-		else:
-			self.reader.disconnect()
-			self.reader = None
-			self.btnConnect.config(state=tk.NORMAL)
-			self.btnInventory.config(state=tk.DISABLED)
 	
 	def inventory(self):
 		self.tagsHeader.set('') # clear summary
@@ -288,6 +289,16 @@ class InventoryApp(object):
 			for key, val in tag.items():
 				infos += '{}: {}\n'.format(key, val)
 			self.tagInfo.set(infos)
+	
+	def saveCapabilities(self):
+		filepath = tkFileDialog.asksaveasfilename(
+			filetypes=[('JSON', '.json'), ('All files', '*')], 
+			defaultextension='.json', 
+			initialfile='capabilities.json'
+		)
+		if filepath and self.reader: # not canceled
+			with open(filepath, 'w') as file:
+				file.write(json.dumps(self.reader.capabilities, indent=4))
 
 if __name__ == '__main__':
 	InventoryApp()
