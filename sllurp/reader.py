@@ -27,7 +27,7 @@ class Reader(LLRPClient):
 			'EnableInventoryParameterSpecID': False,
 			'EnableAntennaID': True,
 			'EnableChannelIndex': True,
-			'EnablePeakRRSI': True,
+			'EnablePeakRSSI': True,
 			'EnableFirstSeenTimestamp': True,
 			'EnableLastSeenTimestamp': True,
 			'EnableTagSeenCount': True,
