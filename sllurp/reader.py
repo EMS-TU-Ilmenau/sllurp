@@ -36,6 +36,7 @@ class Reader(LLRPClient):
 		# connect to reader
 		self.startConnection()
 		print('Connected to reader')
+		self.stopPolitely() # clear access and rospecs
 	
 	def nearestIndex(self, arr, val):
 		'''
