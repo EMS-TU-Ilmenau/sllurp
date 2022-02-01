@@ -697,8 +697,7 @@ def decode_RegulatoryCapabilities(data):
 	fmt = '!HH'
 	fmt_len = struct.calcsize(fmt)
 	# Decode fields
-	(par['CountryCode'],
-	par['CommunicationsStandard']) = struct.unpack(fmt, body[:fmt_len])
+	par['CountryCode'], par['CommunicationsStandard'] = struct.unpack(fmt, body[:fmt_len])
 	
 	body = body[fmt_len:]
 	ret, body = decode('UHFBandCapabilities')(body)
@@ -862,9 +861,7 @@ def decode_FrequencyHopTable(data):
 	id_fmt = '!I'
 	id_fmt_len = struct.calcsize(id_fmt)
 	# Decode fields
-	(par['HopTableId'],
-	flags,
-	par['NumHops']) = struct.unpack(fmt, body[: fmt_len])
+	par['HopTableId'], flags, par['NumHops'] = struct.unpack(fmt, body[: fmt_len])
 	body = body[fmt_len:]
 	num = int(par['NumHops'])
 	for x in range(1, num + 1):
@@ -1287,8 +1284,7 @@ def decode_PerAntennaAirProtocol(data):
 	fmt_len = struct.calcsize(fmt)
 	
 	# Decode fields
-	(par['AntennaID'],
-	par['NumProtocols']) = struct.unpack(fmt, body[:fmt_len])
+	par['AntennaID'], par['NumProtocols'] = struct.unpack(fmt, body[:fmt_len])
 	body = body[fmt_len:]
 	num = int(par['NumProtocols'])
 	id_fmt = '!B'
@@ -2816,7 +2812,7 @@ def decode_ReportBufferLevelWarning(data):
 	body = data[par_header_len:length]
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 
-	par['ReportBufferPercentageFull'] = struct.unpack('!B', body)[0]
+	par['ReportBufferPercentageFull'], = struct.unpack('!B', body)
 
 	return par, data[length:]
 
@@ -2868,7 +2864,7 @@ def decode_ReaderExceptionEvent(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 
 	offset = struct.calcsize('!H')
-	msg_bytecount = struct.unpack('!H', body[:offset])
+	msg_bytecount, = struct.unpack('!H', body[:offset])
 	par['Message'] = body[offset:offset + msg_bytecount]
 	body = body[offset + msg_bytecount:]
 
@@ -2915,9 +2911,7 @@ def decode_RFSurveyEvent(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 
 	# Decode fields
-	(event_type,
-	 par['ROSpecID'],
-	 par['SpecIndex']) = struct.unpack('!BIH', body)
+	event_type, par['ROSpecID'], par['SpecIndex'] = struct.unpack('!BIH', body)
 
 	if event_type == 0:
 		par['EventType'] = 'Start_of_RFSurvey'
@@ -2952,9 +2946,7 @@ def decode_AISpecEvent(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 
 	# Decode fields
-	(_,
-	 par['ROSpecID'],
-	 par['SpecIndex']) = struct.unpack('!BIH', body)
+	_, par['ROSpecID'], par['SpecIndex'] = struct.unpack('!BIH', body)
 
 	# first parameter (event_type) is ignored as just a single value is
 	# possible.
@@ -3028,7 +3020,7 @@ def decode_ConnectionAttemptEvent(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 
 	# Decode fields
-	(status, ) = struct.unpack('!H', body)
+	status, = struct.unpack('!H', body)
 	par['Status'] = ConnEvent_Type2Name[status]
 
 	return par, data[length:]
@@ -3093,8 +3085,7 @@ def decode_SpecLoopEvent(data):
 	logger.debug('%s (type=%d len=%d)', func(), msgtype, length)
 
 	# Decode fields
-	(par['ROSpecID'],
-	 par['LoopCount']) = struct.unpack('!II', body)
+	par['ROSpecID'], par['LoopCount'] = struct.unpack('!II', body)
 
 	return par, data[length:]
 
@@ -3328,8 +3319,7 @@ def decode_ParameterError(data):
 	
 	# Decode fields
 	offset = struct.calcsize('!HH')
-	par['ParameterType'], par['ErrorCode'] = struct.unpack('!HH',
-														body[:offset])
+	par['ParameterType'], par['ErrorCode'] = struct.unpack('!HH', body[:offset])
 	
 	# Decode parameters
 	ret, body = decode('FieldError')(body[offset:])
