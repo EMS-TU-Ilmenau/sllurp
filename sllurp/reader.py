@@ -99,6 +99,7 @@ class Reader(LLRPClient):
 		'''
 		# update settings
 		self.report_interval = duration
+		self.report_every_n_tags = None
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
 		self.mode_identifier = mode
@@ -137,22 +138,26 @@ class Reader(LLRPClient):
 		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
 	
-	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, duration=1., session=2, population=1, antennas=(0,)):
+	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, tagInterval=10, timeInterval=1., session=2, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and 
 		reports tagreports periodically through a callback function.
 		
-		:param reportCallback: call back function which is called every 
-			"duration" seconds with the tagreport as argument or 
-			for every detected tag if "duration" <= 0
-		the other parameters are the same as in "detectTags"
+		:param reportCallback: function which gets called for every tagreport
+		:param tagInterval: when not None, report for every n tags found
+		:param timeInterval: when tagInterval not None, report timeout in seconds.
+			When tagInterval None, report interval in seconds
+		
+		The other parameters are the same as in "detectTags"
 		'''
 		# update settings
-		if duration <= 0:
+		if tagInterval:
+			self.report_every_n_tags = tagInterval # report every tag
+			self.report_timeout = timeInterval # in case tags don't respond
 			self.report_interval = None
-			self.report_every_n_tags = 1 # report every tag
-			self.report_timeout = 1. # in case tags don't respond
 		else:
-			self.report_interval = duration
+			self.report_every_n_tags = None
+			self.report_interval = timeInterval # report every n seconds
+		
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
 		self.mode_identifier = mode
