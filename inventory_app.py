@@ -44,7 +44,7 @@ class InventoryApp(object):
 		# ip
 		row += 1
 		self.ip = tk.StringVar()
-		self.ip.set('192.168.4.2')
+		self.ip.set('192.168.5.2')
 		tk.Label(self.conf, text='IP address').grid(row=row, column=0, sticky=tk.W)
 		tk.Entry(self.conf, textvariable=self.ip).grid(row=row, column=1, sticky=tk.W)
 		# reader model

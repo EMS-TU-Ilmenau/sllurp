@@ -6,7 +6,7 @@ Classes for specific reader implementations
 '''
 
 class Reader(LLRPClient):
-	def __init__(self, ip='192.168.4.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
+	def __init__(self, ip='192.168.5.2', includeEPCs=[], excludeEPCs=[], *args, **kwargs):
 		''':param ip: IP address of the reader
 		:param includeEPCs: string or list of strings containing EPCs to look for during inventory.
 			Other tags will not be reported when used.
