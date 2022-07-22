@@ -156,7 +156,6 @@ class InventoryApp(object):
 		# button for single inventory
 		row += 1
 		tk.Button(self.conf, text='Single inventory', command=self.singleInventory).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
-		self.conf.rowconfigure(row, weight=1)
 
 		# button for live inventory
 		row += 1
@@ -167,6 +166,7 @@ class InventoryApp(object):
 		# button for saving capabilities
 		row += 1
 		tk.Button(self.conf, text='Save capabilities', command=self.saveCapabilities).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
+		self.conf.rowconfigure(row, weight=1)
 	
 	def displayModeInfos(self, modeID):
 		'''
