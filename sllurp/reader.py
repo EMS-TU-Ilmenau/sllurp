@@ -179,7 +179,7 @@ class Reader(LLRPClient):
 		'''stops the live inventoring'''
 		try:
 			self._liveStop.set()
-			self._liveThread.join()
+			self._liveThread.join(timeout=(self.report_timeout or self.report_interval))
 		except:
 			pass
 	
