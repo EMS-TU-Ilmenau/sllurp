@@ -25,6 +25,7 @@ class InventoryApp(object):
 		self.root = tk.Tk()
 		self.reader = None
 		self.tags = []
+		self.trackedTags = []
 		
 		# initially place in the middle of the screen
 		sizeX, sizeY = 800, 550
@@ -72,6 +73,9 @@ class InventoryApp(object):
 		scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 		self.tagsDetected.pack(fill=tk.BOTH, expand=True)
 		self.tagsDetected.bind('<ButtonRelease-1>', self.selectTag)
+		# buttons for filtering tags
+		tk.Button(taglist, text='Track tags', command=self.trackTags).pack(fill=tk.X)
+		tk.Button(taglist, text='Clear tracked', command=self.clearTrackedTags).pack(fill=tk.X)
 		
 		# make the selected tags info panel
 		taginfo = tk.Frame(self.root)
@@ -319,6 +323,14 @@ class InventoryApp(object):
 			id = int(epc[-2:], 16)
 			# insert line with EPC, ID and RSSI
 			self.tagsDetected.insert(tk.END, '{} (...{}) | {}'.format(epc, id, stars))
+	
+	def trackTags(self):
+		if self.reader:
+			self.reader.includeEPCs = [self.reader.getEPC(tag) for tag in self.tags]
+	
+	def clearTrackedTags(self):
+		if self.reader:
+			self.reader.includeEPCs = []
 	
 	def selectTag(self, event):
 		if self.tags:
