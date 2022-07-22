@@ -27,7 +27,7 @@ class InventoryApp(object):
 		self.tags = []
 		
 		# initially place in the middle of the screen
-		sizeX, sizeY = 750, 500
+		sizeX, sizeY = 800, 550
 		screenX, screenY = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
 		self.root.geometry('{}x{}+{}+{}'.format(sizeX, sizeY, 
 			int(screenX/2-sizeX/2), int(screenY/2-sizeY/2)))
@@ -110,6 +110,7 @@ class InventoryApp(object):
 		self.presetmode.set(modeID)
 		tk.Label(self.conf, text='Preset mode').grid(row=row, column=0, sticky=tk.W)
 		tk.OptionMenu(self.conf, self.presetmode, *(self.reader.mode_table), command=self.displayModeInfos).grid(row=row, column=1, sticky=tk.W+tk.E)
+		
 		# preset mode infos
 		row += 1
 		self.modeInfo = tk.StringVar()
@@ -152,10 +153,17 @@ class InventoryApp(object):
 		tk.Label(self.conf, text='Antennas').grid(row=row, column=0, sticky=tk.W)
 		tk.Entry(self.conf, textvariable=self.antennas).grid(row=row, column=1, sticky=tk.W)
 		
-		# button for inventory
+		# button for single inventory
 		row += 1
-		tk.Button(self.conf, text='Inventory', command=self.inventory).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
+		tk.Button(self.conf, text='Single inventory', command=self.singleInventory).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
 		self.conf.rowconfigure(row, weight=1)
+
+		# button for live inventory
+		row += 1
+		self.liveStateTxt = tk.StringVar()
+		self.liveStateTxt.set('Live inventory')
+		tk.Button(self.conf, textvariable=self.liveStateTxt, command=self.liveInventory).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
+		
 		# button for saving capabilities
 		row += 1
 		tk.Button(self.conf, text='Save capabilities', command=self.saveCapabilities).grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E+tk.S)
@@ -233,13 +241,7 @@ class InventoryApp(object):
 				self.buildSettings()
 				self.btnConnect.config(state=tk.DISABLED)
 	
-	def inventory(self):
-		self.tagsHeader.set('') # clear summary
-		self.tagInfo.set('') # clear selected tag infos
-		self.tagsDetected.delete(0, tk.END) # clear list
-		if not self.reader:
-			return
-		
+	def getSettings(self):
 		# parse antenna ports from string
 		antStr = self.antennas.get()
 		antennas = (0,) if 'all' in antStr else tuple(int(a) for a in antStr.split(','))
@@ -257,10 +259,48 @@ class InventoryApp(object):
 		if isinstance(self.reader, R420):
 			settings.update({'searchmode': self.searchmode.get()})
 		
-		self.tags = self.reader.detectTags(**settings)
+		return settings
+	
+	def singleInventory(self):
+		if not self.reader:
+			return
 		
+		settings = self.getSettings()
+		self.tags = self.reader.detectTags(**settings)
+		self.listTags()
+	
+	def liveInventory(self):
+		if not self.reader:
+			return
+		
+		if self.liveStateTxt.get() == 'Live inventory':
+			# start live inventory
+			settings = self.getSettings()
+			settings['timeInterval'] = settings.pop('duration')
+			settings['tagInterval'] = None
+			self.reader.startLiveReports(self.collectTags, **settings)
+			self.liveStateTxt.set('Stop inventory')
+		else:
+			# stop live inventory
+			self.reader._liveStop.set()
+			self.liveStateTxt.set('Live inventory')
+	
+	def collectTags(self, tagreport):
+		# list detected tags
+		self.tags = tagreport
+		self.listTags()
+
+	def listTags(self):
+		# clear tag list
+		self.tagsHeader.set('') # clear summary
+		self.tagInfo.set('') # clear selected tag infos
+		self.tagsDetected.delete(0, tk.END) # clear list
+
+		if not (self.reader and self.tags):
+			return
+		
+		# insert found tags in list
 		self.tagsHeader.set('{} Tags ({} unique)'.format(len(self.tags), len(self.reader.uniqueTags(self.tags))))
-		# insert found tags
 		for tag in self.tags:
 			rssi = tag.get('RSSI', tag.get('PeakRSSI'))
 			# make indicator for RSSI
@@ -281,7 +321,7 @@ class InventoryApp(object):
 			self.tagsDetected.insert(tk.END, '{} (...{}) | {}'.format(epc, id, stars))
 	
 	def selectTag(self, event):
-		if self.reader:
+		if self.tags:
 			index = self.tagsDetected.curselection()[0]
 			tag = self.tags[index]
 			# show selected tag infos
