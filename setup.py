@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 from setuptools import setup, find_packages
 import os
 import codecs
@@ -16,7 +14,7 @@ def read(filename):
 
 setup(
     name='sllurp',
-    version='0.3.7',
+    version='0.3.8',
     description='RFID reader control library',
     long_description=read('README.rst'),
     author='Ben Ransford',

@@ -1,4 +1,3 @@
-#!/bin/bash
 try:
 	import Tkinter as tk # for building the gui - Python 2
 	import tkFileDialog # for opening a file with filedialog
@@ -7,7 +6,7 @@ except ImportError:
 	import tkinter.filedialog as tkFileDialog
 
 import json # for saving capabilities as JSON file
-from sllurp.reader import Reader, R420, ARU2400, FX9600 # for controlling readers
+from .reader import Reader, R420, ARU2400, FX9600 # for controlling readers
 
 
 readerClasses = {
