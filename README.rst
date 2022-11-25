@@ -126,6 +126,8 @@ Currently, the GUI supports only the classes defined in reader_.
 	from sllurp.gui import InventoryApp
 	app = InventoryApp() # start the GUI
 
+The GUI can also be started with ``python -m sllurp.gui``
+
 Known Issues
 ------------
 
