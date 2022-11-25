@@ -123,6 +123,7 @@ GUI
 Currently, the GUI supports only the classes defined in reader_.
 
 .. code:: python
+	
 	from sllurp.gui import InventoryApp
 	app = InventoryApp() # start the GUI
 
