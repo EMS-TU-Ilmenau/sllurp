@@ -124,7 +124,7 @@ class InventoryApp(object):
 		if isinstance(self.reader, R420):
 			row += 1
 			self.searchmode = tk.IntVar()
-			self.searchmode.set(2)
+			self.searchmode.set(0)
 			tk.Label(self.conf, text='Search mode').grid(row=row, column=0, sticky=tk.W)
 			tk.OptionMenu(self.conf, self.searchmode, 0, 1, 2, 3).grid(row=row, column=1, sticky=tk.W+tk.E)
 		
