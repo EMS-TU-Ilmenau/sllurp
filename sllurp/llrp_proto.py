@@ -3594,7 +3594,7 @@ def llrp_data2xml(msg):
 class LLRPROSpec(dict):
 	def __init__(self, msgid, priority=0, state='Disabled',
 				antennas=(1,), power=80, channel=1, 
-				report_interval=1, report_every_n_tags=None, report_timeout=5,
+				report_interval=1., report_every_n_tags=None,
 				report_selection={}, impinj_report_selection={}, 
 				mode_index=1, tari=16670, session=2, population=1, 
 				impinj_searchmode=0, hopTableID=0, moto_antenna_conf={}):
@@ -3694,31 +3694,15 @@ class LLRPROSpec(dict):
 			ips['AntennaConfiguration'].append(antconf)
 		
 		if report_interval is not None:
-			self['ROSpec']['ROBoundarySpec']['ROSpecStopTrigger'] = {
-				'ROSpecStopTriggerType': 'Duration',
-				'DurationTriggerValue': int(report_interval * 1000)
-			}
 			self['ROSpec']['AISpec']['AISpecStopTrigger'] = {
 				'AISpecStopTriggerType': 'Duration',
 				'DurationTriggerValue': int(report_interval * 1000)
 			}
 		
 		if report_every_n_tags is not None:
-			if report_timeout:
-				logger.info('will report every ~N=%d tags or %d ms',
-							report_every_n_tags, report_timeout * 1000)
-			else:
-				logger.info('will report every ~N=%d tags',
-							report_every_n_tags)
-			self['ROSpec']['AISpec']['AISpecStopTrigger'].update({
-				'AISpecStopTriggerType': 'Tag observation',
-				'TagObservationTrigger': {
-					'TriggerType': 'UponNTags',
-					'NumberOfTags': report_every_n_tags,
-					'NumberOfAttempts': 0,
-					'T': 0,
-					'Timeout': report_timeout * 1000,  # milliseconds
-				},
+			# report n tags or upon timeout (when AISpec stops)
+			self['ROSpec']['ROReportSpec'].update({
+				'N': report_every_n_tags
 			})
 	
 	def __repr__(self):

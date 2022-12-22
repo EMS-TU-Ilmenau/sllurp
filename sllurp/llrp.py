@@ -155,7 +155,7 @@ class Transport:
 class LLRPClient(object):
 	
 	def __init__(self, ip, antennas=(0,), power=0, channel=1, 
-				report_interval=0.1, report_every_n_tags=None, report_timeout=10.,
+				report_interval=1., report_every_n_tags=None, 
 				report_selection={}, mode_index=None, mode_identifier=None, tari=None, 
 				session=2, population=1, freq_hop_table_id=0):
 		# settings
@@ -168,7 +168,6 @@ class LLRPClient(object):
 		
 		self.report_interval = report_interval # report after duration in sec, OR...
 		self.report_every_n_tags = report_every_n_tags # report every n tags
-		self.report_timeout = report_timeout # in case every n tags don't respond
 		
 		self.population = population # estimated tag population
 		self.session = session # 0...3 for inventoring same tag(s) with different readers
@@ -323,7 +322,6 @@ class LLRPClient(object):
 			channel=self.channel, 
 			report_interval=self.report_interval, 
 			report_every_n_tags=self.report_every_n_tags, 
-			report_timeout=self.report_timeout,
 			report_selection=self.report_selection, 
 			mode_index=self.mode_index or self.reader_mode['ModeIdentifier'],
 			tari=self.tari or self.reader_mode['MaxTari'],

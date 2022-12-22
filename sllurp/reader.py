@@ -139,7 +139,7 @@ class Reader(LLRPClient):
 		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
 	
-	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, tagInterval=10, timeInterval=1., session=2, population=1, antennas=(0,)):
+	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, tagInterval=10., timeInterval=1., session=2, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and 
 		reports tagreports periodically through a callback function.
 		
@@ -151,13 +151,11 @@ class Reader(LLRPClient):
 		The other parameters are the same as in "detectTags"
 		'''
 		# update settings
+		self.report_interval = timeInterval # in case tags don't respond
 		if tagInterval:
 			self.report_every_n_tags = tagInterval # report every tag
-			self.report_timeout = timeInterval # in case tags don't respond
-			self.report_interval = None
 		else:
 			self.report_every_n_tags = None
-			self.report_interval = timeInterval # report every n seconds
 		
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
@@ -179,7 +177,7 @@ class Reader(LLRPClient):
 		'''stops the live inventoring'''
 		try:
 			self._liveStop.set()
-			self._liveThread.join(timeout=(self.report_timeout or self.report_interval))
+			self._liveThread.join(timeout=self.report_interval)
 		except:
 			pass
 	
@@ -237,9 +235,8 @@ class ARU2400(Reader):
 		'''
 		# Kathrein does not report multiple tags in one tagreport, so typical interval report is not possible
 		# update settings
-		self.report_interval = None
+		self.report_interval = duration
 		self.report_every_n_tags = 10 # report every n tags
-		self.report_timeout = duration # in case every n tags don't respond
 		self.power = self.getPowerIndex(powerDBm)
 		self.channel = self.getChannelIndex(freqMHz)
 		self.mode_identifier = mode
