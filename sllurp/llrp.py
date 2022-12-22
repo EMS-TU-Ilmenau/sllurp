@@ -195,7 +195,7 @@ class LLRPClient(object):
 	
 	def reportTimeout(self):
 		''':returns: timeout for tag reports'''
-		return self.report_timeout+1 if self.report_every_n_tags else max(5., (self.report_interval or 1.)+1.)
+		return max(5., (self.report_interval or 1.)+1.)
 	
 	def startConnection(self):
 		# connect
