@@ -648,16 +648,19 @@ class LLRPClient(object):
 		self.lastReceivedMsg = {}
 		
 		# receive data
-		self.rawDataReceived(self.transport.read(self.reportTimeout()))
-		while self.expectingRemainingBytes:
+		while True:
 			self.rawDataReceived(self.transport.read(self.reportTimeout()))
+			if self.expectingRemainingBytes == 0:
+				break
+		
 		if not hasattr(self.lastReceivedMsg, 'getName'):
 			raise LLRPError('Could not decode llrp message from reader')
 		
 		if msgName:
 			# wait until expected message received
-			while self.lastReceivedMsg.getName() != msgName:
-				self.rawDataReceived(self.transport.read(self.reportTimeout()))
+			if self.lastReceivedMsg.getName() != msgName:
+				self.readLLRPMessage(msgName)
 		else:
 			msgName = self.lastReceivedMsg.getName()
+		
 		return self.lastReceivedMsg.msgdict[msgName]

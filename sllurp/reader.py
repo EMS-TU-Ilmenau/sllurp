@@ -37,6 +37,10 @@ class Reader(LLRPClient):
 		self.startConnection()
 		print('Connected to reader')
 		self.stopPolitely() # clear access and rospecs
+
+		# prepare live inventory
+		self._liveStop = threading.Event()
+		self._liveThread = None
 	
 	def nearestIndex(self, arr, val):
 		'''
@@ -139,7 +143,7 @@ class Reader(LLRPClient):
 		print('{} unique tags detected'.format(len(self.uniqueTags(tags))))
 		self.round += 1
 	
-	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, tagInterval=10., timeInterval=1., session=2, population=1, antennas=(0,)):
+	def startLiveReports(self, reportCallback, powerDBm, freqMHz, mode, tagInterval=10, timeInterval=1., session=2, population=1, antennas=(0,)):
 		'''starts the readers inventoring process and 
 		reports tagreports periodically through a callback function.
 		
@@ -169,17 +173,19 @@ class Reader(LLRPClient):
 		self.addMsgCallback('RO_ACCESS_REPORT', self._foundTagsLive)
 		
 		# continue non-blocking
-		self._liveStop = threading.Event()
+		self._liveStop.clear()
 		self._liveThread = threading.Thread(target=self._liveInventory, args=(self._liveStop,))
 		self._liveThread.start()
 	
 	def stopLiveReports(self):
 		'''stops the live inventoring'''
-		try:
+		if self._liveThread and self._liveThread.is_alive():
 			self._liveStop.set()
-			self._liveThread.join(timeout=self.report_interval)
-		except:
-			pass
+			self._liveThread.join(timeout=self.reportTimeout())
+			# check if it worked
+			if self._liveThread.is_alive():
+				raise RuntimeWarning('Could not stop live inventory')
+
 	
 	def _liveInventory(self, stopper):
 		'''non-blocking inventory'''
@@ -193,7 +199,7 @@ class Reader(LLRPClient):
 		# don't need more reports
 		self.removeMsgCallback('RO_ACCESS_REPORT', self._foundTagsLive)
 		# stop inventoring
-		self.stopPolitely()		
+		self.stopPolitely()
 	
 	def _foundTagsLive(self, msgdict):
 		tags = msgdict['TagReportData'] or []
