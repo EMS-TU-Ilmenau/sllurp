@@ -181,7 +181,7 @@ class Reader(LLRPClient):
 		'''stops the live inventoring'''
 		if self._liveThread and self._liveThread.is_alive():
 			self._liveStop.set()
-			self._liveThread.join(timeout=self.reportTimeout())
+			self._liveThread.join(timeout=self.reportTimeout()*2)
 			# check if it worked
 			if self._liveThread.is_alive():
 				raise RuntimeWarning('Could not stop live inventory')
@@ -199,7 +199,10 @@ class Reader(LLRPClient):
 		# don't need more reports
 		self.removeMsgCallback('RO_ACCESS_REPORT', self._foundTagsLive)
 		# stop inventoring
-		self.stopPolitely()
+		try:
+			self.stopPolitely()
+		except:
+			pass # for some reason, there is no DELETE_ROSPEC_RESPONSE, but the reader stops anyway
 	
 	def _foundTagsLive(self, msgdict):
 		tags = msgdict['TagReportData'] or []

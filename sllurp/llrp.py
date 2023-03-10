@@ -157,7 +157,7 @@ class LLRPClient(object):
 	def __init__(self, ip, antennas=(0,), power=0, channel=1, 
 				report_interval=1., report_every_n_tags=None, 
 				report_selection={}, mode_index=None, mode_identifier=None, tari=None, 
-				session=2, population=1, freq_hop_table_id=0):
+				session=2, population=1, freq_hop_table_id=1):
 		# settings
 		self.ip = ip # reader ip address
 		
@@ -186,11 +186,8 @@ class LLRPClient(object):
 		self.mode_table = []
 		self.reader_mode = None
 		
-		self.expectingRemainingBytes = 0
-		self.partialData = ''
-		
+		self.partialData = b''
 		self.lastReceivedMsg = None
-		
 		self.msgCallbacks = defaultdict(list)
 	
 	def reportTimeout(self):
@@ -340,12 +337,12 @@ class LLRPClient(object):
 	def stopPolitely(self):
 		'''Delete all active AccessSpecs and ROSpecs.'''
 		logger.info('stopping politely')
-		# delete all accessspecs
-		self.send_DELETE_ACCESSSPEC()
-		self.readLLRPMessage('DELETE_ACCESSSPEC_RESPONSE')
 		# delete all rospecs
 		self.send_DELETE_ROSPEC()
 		self.readLLRPMessage('DELETE_ROSPEC_RESPONSE')
+		# delete all accessspecs
+		self.send_DELETE_ACCESSSPEC()
+		self.readLLRPMessage('DELETE_ACCESSSPEC_RESPONSE')
 	
 	def startAccess(self, readWords=None, writeWords=None, target=None,
 					opCount=1, accessSpecID=1, param=None,
@@ -432,75 +429,6 @@ class LLRPClient(object):
 		# enable it
 		self.send_ENABLE_ACCESSSPEC(accessSpec['AccessSpecID'])
 		self.readLLRPMessage('ENABLE_ACCESSSPEC_RESPONSE')
-	
-	def handleMessage(self, lmsg):
-		'''Checks a LLRP message for common issues.'''
-		self.lastReceivedMsg = lmsg
-		logger.debug('LLRPMessage received: %s', lmsg)
-		msgName = lmsg.getName()
-		if not msgName:
-			logger.warning('Cannot handle unknown LLRP message')
-			return
-		msgDict = lmsg.msgdict[msgName]
-		
-		# check errors in the message
-		if not lmsg.isSuccess():
-			if 'LLRPStatus' in msgDict:
-				status = msgDict['LLRPStatus']['StatusCode']
-				err = msgDict['LLRPStatus']['ErrorDescription']
-				logger.fatal('Error %s in %s: %s', status, msgName, err)
-			raise LLRPError('Message %s was not successful. See log for details.', msgName)
-		
-		# keepalives can occur at any time
-		if msgName == 'KEEPALIVE':
-			self.send_KEEPALIVE_ACK()
-		
-		# call registered callback functions
-		for fn in self.msgCallbacks[msgName]:
-			fn(msgDict)
-		
-	def rawDataReceived(self, data):
-		'''Receives binary data from the reader. In normal cases, we can parse 
-		the message according to the protocoll and return it as a dictionary.'''
-		logger.debug('got %d bytes from reader: %s', len(data), hexlify(data))
-		
-		if self.expectingRemainingBytes:
-			if len(data) >= self.expectingRemainingBytes:
-				data = self.partialData + data
-				self.partialData = ''
-				self.expectingRemainingBytes -= len(data)
-			else:
-				# still not enough; wait until next time
-				self.partialData += data
-				self.expectingRemainingBytes -= len(data)
-				return
-			
-		while data:
-			# parse the message header to grab its length
-			if len(data) >= LLRPMessage.full_hdr_len:
-				msg_type, msg_len, message_id = struct.unpack(
-					LLRPMessage.full_hdr_fmt, data[:LLRPMessage.full_hdr_len])
-			else:
-				logger.warning('Too few bytes (%d) to unpack message header', len(data))
-				self.partialData = data
-				self.expectingRemainingBytes = LLRPMessage.full_hdr_len - len(data)
-				break
-			
-			logger.debug('expect %d bytes (have %d)', msg_len, len(data))
-			
-			if len(data) < msg_len:
-				# got too few bytes
-				self.partialData = data
-				self.expectingRemainingBytes = msg_len - len(data)
-				logger.debug('Too few bytes (%d) received to unpack message at once. '
-					'(%d) remaining bytes', len(data), self.expectingRemainingBytes)
-				break
-			else:
-				# got at least the right number of bytes
-				self.expectingRemainingBytes = 0
-				lmsg = LLRPMessage(msgbytes=data[:msg_len])
-				self.handleMessage(lmsg)
-				data = data[msg_len:]
 	
 	def send_KEEPALIVE_ACK(self):
 		self.sendLLRPMessage(LLRPMessage(msgdict={
@@ -647,20 +575,62 @@ class LLRPClient(object):
 		'''Reads incoming data from the reader until a specified message.'''
 		self.lastReceivedMsg = {}
 		
-		# receive data
+		# receive raw data until a message was decoded
 		while True:
 			self.rawDataReceived(self.transport.read(self.reportTimeout()))
-			if self.expectingRemainingBytes == 0:
-				break
+			if self.lastReceivedMsg:
+				print(self.lastReceivedMsg.getName())
+				if msgName:
+					# wait until expected message received
+					if self.lastReceivedMsg.getName() != msgName:
+						continue
+				else:
+					msgName = self.lastReceivedMsg.getName()
+
+				return self.lastReceivedMsg.msgdict[msgName]
 		
-		if not hasattr(self.lastReceivedMsg, 'getName'):
-			raise LLRPError('Could not decode llrp message from reader')
+	def rawDataReceived(self, data):
+		'''Receives binary data from the reader. In normal cases, we can parse 
+		the message according to the protocoll and return it as a dictionary.'''
+		logger.debug('got %d bytes from reader: %s', len(data), hexlify(data))
+		if not data:
+			return
 		
-		if msgName:
-			# wait until expected message received
-			if self.lastReceivedMsg.getName() != msgName:
-				self.readLLRPMessage(msgName)
-		else:
-			msgName = self.lastReceivedMsg.getName()
+		self.partialData += data
+
+		if len(self.partialData) >= LLRPMessage.hdr_len:
+			# parse the message header to grab its length (including header bytes!)
+			_, msg_len = struct.unpack(LLRPMessage.hdr_fmt, self.partialData[:LLRPMessage.hdr_len])
+			
+			if len(self.partialData) >= msg_len:
+				# parse the message
+				lmsg = LLRPMessage(msgbytes=self.partialData[:msg_len])
+				self.handleMessage(lmsg)
+				self.partialData = self.partialData[msg_len:]
+	
+	def handleMessage(self, lmsg):
+		'''Checks a LLRP message for common issues.'''
+		self.lastReceivedMsg = lmsg
+		logger.debug('LLRPMessage received: %s', lmsg)
+		msgName = lmsg.getName()
+		if not msgName:
+			logger.warning('Cannot handle unknown LLRP message')
+			return
 		
-		return self.lastReceivedMsg.msgdict[msgName]
+		msgDict = lmsg.msgdict[msgName]
+		
+		# check errors in the message
+		if not lmsg.isSuccess():
+			if 'LLRPStatus' in msgDict:
+				status = msgDict['LLRPStatus']['StatusCode']
+				err = msgDict['LLRPStatus']['ErrorDescription']
+				logger.fatal('Error %s in %s: %s', status, msgName, err)
+			raise LLRPError('Message %s was not successful. See log for details.', msgName)
+		
+		# keepalives can occur at any time
+		if msgName == 'KEEPALIVE':
+			self.send_KEEPALIVE_ACK()
+		
+		# call registered callback functions
+		for fn in self.msgCallbacks[msgName]:
+			fn(msgDict)
