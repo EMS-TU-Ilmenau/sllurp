@@ -579,7 +579,6 @@ class LLRPClient(object):
 		while True:
 			self.rawDataReceived(self.transport.read(self.reportTimeout()))
 			if self.lastReceivedMsg:
-				print(self.lastReceivedMsg.getName())
 				if msgName:
 					# wait until expected message received
 					if self.lastReceivedMsg.getName() != msgName:
