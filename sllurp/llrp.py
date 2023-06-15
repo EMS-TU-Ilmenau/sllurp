@@ -617,7 +617,6 @@ class LLRPClient(object):
 		self.lastReceivedMsg = lmsg
 		logger.debug('LLRPMessage received: %s', lmsg)
 		msgName = lmsg.getName()
-		print(msgName)
 		if not msgName:
 			logger.warning('Cannot handle unknown LLRP message')
 			return
