@@ -199,10 +199,7 @@ class Reader(LLRPClient):
 		# don't need more reports
 		self.removeMsgCallback('RO_ACCESS_REPORT', self._foundTagsLive)
 		# stop inventoring
-		try:
-			self.stopPolitely()
-		except:
-			pass # for some reason, there is no DELETE_ROSPEC_RESPONSE, but the reader stops anyway
+		self.stopPolitely()
 	
 	def _foundTagsLive(self, msgdict):
 		tags = msgdict['TagReportData'] or []

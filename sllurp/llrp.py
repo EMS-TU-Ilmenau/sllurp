@@ -597,21 +597,27 @@ class LLRPClient(object):
 		
 		self.partialData += data
 
-		if len(self.partialData) >= LLRPMessage.hdr_len:
-			# parse the message header to grab its length (including header bytes!)
-			_, msg_len = struct.unpack(LLRPMessage.hdr_fmt, self.partialData[:LLRPMessage.hdr_len])
-			
-			if len(self.partialData) >= msg_len:
-				# parse the message
-				lmsg = LLRPMessage(msgbytes=self.partialData[:msg_len])
-				self.handleMessage(lmsg)
-				self.partialData = self.partialData[msg_len:]
+		while self.partialData:
+			if len(self.partialData) >= LLRPMessage.hdr_len:
+				# parse the message header to grab its length (including header bytes!)
+				_, msg_len = struct.unpack(LLRPMessage.hdr_fmt, self.partialData[:LLRPMessage.hdr_len])
+
+				if len(self.partialData) >= msg_len:
+					# parse the message
+					lmsg = LLRPMessage(msgbytes=self.partialData[:msg_len])
+					self.handleMessage(lmsg)
+					self.partialData = self.partialData[msg_len:]
+				else:
+					break
+			else:
+				break
 	
 	def handleMessage(self, lmsg):
 		'''Checks a LLRP message for common issues.'''
 		self.lastReceivedMsg = lmsg
 		logger.debug('LLRPMessage received: %s', lmsg)
 		msgName = lmsg.getName()
+		print(msgName)
 		if not msgName:
 			logger.warning('Cannot handle unknown LLRP message')
 			return
