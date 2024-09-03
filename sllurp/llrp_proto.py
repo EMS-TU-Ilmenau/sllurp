@@ -28,7 +28,7 @@ import struct
 from collections import defaultdict
 from binascii import hexlify
 from .util import BIT, BITMASK, func, reverse_dict
-from . import llrp_decoder
+from .llrp_decoder import decode_tve_parameter, decode_ext_parameter, EXT_TYPE, IPJ_VEND, MOTO_VEND
 from .llrp_errors import LLRPError, ReaderConfigurationError
 
 #
@@ -2310,6 +2310,8 @@ def encode_ROReportSpec(par):
 	# add custom report
 	if 'ImpinjTagReportContentSelector' in par:
 		data += encode('ImpinjTagReportContentSelector')(par['ImpinjTagReportContentSelector'])
+	if 'MotoTagReportContentSelector' in par:
+		data += encode('MotoTagReportContentSelector')(par['MotoTagReportContentSelector'])
 	
 	data = struct.pack(msg_header, msgtype,
 					len(data) + msg_header_len,
@@ -2329,18 +2331,18 @@ Message_struct['ROReportSpec'] = {
 }
 
 
-# 16.2.7.1 TagReportContentSelector Parameter
+# 16.2.7.1.1 TagReportContentSelector Parameter
 def encode_TagReportContentSelector(par):
 	msgtype = Message_struct['TagReportContentSelector']['type']
 	
 	msg_header = '!HH'
 	
 	flags = 0
-	i = 15
+	bit = 15
 	for field in Message_struct['TagReportContentSelector']['fields']:
 		if field in par and par[field]:
-			flags = flags | (1 << i)
-		i = i - 1
+			flags |= (1 << bit)
+		bit -= 1
 	
 	data = struct.pack('!H', flags)
 	data = struct.pack(msg_header, msgtype,
@@ -2397,7 +2399,7 @@ def decode_TagReportData(data):
 	
 	# grab TV-encoded parameters
 	while body:
-		ret, nbytes = llrp_decoder.decode_tve_parameter(body)
+		ret, nbytes = decode_tve_parameter(body)
 		if ret:
 			par.update(ret)
 			body = body[nbytes:]
@@ -2408,9 +2410,9 @@ def decode_TagReportData(data):
 	if ret:
 		par['OpSpecResult'] = ret
 	
-	# grab impinj specific parameters
+	# grab extension specific parameters
 	while body:
-		ret, nbytes = llrp_decoder.decode_impinj_parameter(body)
+		ret, nbytes = decode_ext_parameter(body)
 		if ret:
 			par.update(ret)
 			body = body[nbytes:]
@@ -3353,7 +3355,6 @@ Message_struct['ParameterError'] = {
 #
 # Custom extensions
 #
-EXT_TYPE = 1023
 
 def pack_data(msg, data):
 	'''
@@ -3370,7 +3371,6 @@ def pack_data(msg, data):
 #
 # Impinj specific protocol extentions
 #
-IPJ_VEND = 25882
 
 # Impinj_Octane_LLRP 6.1.1 IMPINJ_ENABLE_EXTENSIONS
 def encode_ImpinjEnableExtensions(msg):
@@ -3485,7 +3485,6 @@ Message_struct['ImpinjInventorySearchMode'] = {
 # Zebra/Motorola specific protocol extentions
 # https://www.zebra.com/content/dam/zebra_new_ia/en-us/manuals/rfid/interface-control-guide-en.pdf
 #
-MOTO_VEND = 161
 
 # MotoAntennaConfig
 def encode_MotoAntennaConfig(par):
@@ -3543,9 +3542,13 @@ Message_struct['MotoAntennaPhysicalPortConfig'] = {
 
 # MotoAntennaQueryConfig
 def encode_MotoAntennaQueryConfig(par):
-	enableS = 1 if par['S'] else 0
-	enableB = 1 if par['B'] else 0
-	data = struct.pack('!B', enableS << 7 | enableB << 6)
+	bit = 15
+	for field in Message_struct['MotoAntennaQueryConfig']['fields']:
+		if field in par and par[field]:
+			flags |= (1 << bit)
+		bit -= 1
+	
+	data = struct.pack('!H', flags)
 	return pack_data('MotoAntennaQueryConfig', data)
 
 Message_struct['MotoAntennaQueryConfig'] = {
@@ -3559,6 +3562,34 @@ Message_struct['MotoAntennaQueryConfig'] = {
 	'encode': encode_MotoAntennaQueryConfig
 }
 
+# MotoTagReportContentSelector
+def encode_MotoTagReportContentSelector(par):
+	flags = 0
+	bit = 31
+	for field in Message_struct['MotoTagReportContentSelector']['fields']:
+		if field in par and par[field]:
+			flags |= (1 << bit)
+		bit -= 1
+	
+	data = struct.pack('!I', flags)
+	return pack_data('MotoTagReportContentSelector', data)
+
+Message_struct['MotoTagReportContentSelector'] = {
+	'type': EXT_TYPE,
+	'vendorID': MOTO_VEND,
+	'subtype': 708,
+	'fields': [
+		'EnableZoneID', 
+		'EnableZoneName', 
+		'EnableAntennaPhysicalPortConfig', 
+		'EnablePhase', 
+		'EnableGPS', 
+		'EnableMLTReport'
+	],
+	'encode': encode_MotoTagReportContentSelector
+}
+
+# MotoTagPhase
 
 def llrp_data2xml(msg):
 	def __llrp_data2xml(msg, name, level=0):
@@ -3595,7 +3626,7 @@ class LLRPROSpec(dict):
 	def __init__(self, msgid, priority=0, state='Disabled',
 				antennas=(1,), power=80, channel=1, 
 				report_interval=1., report_every_n_tags=None,
-				report_selection={}, impinj_report_selection={}, 
+				report_selection={}, impinj_report_selection={}, moto_report_selection={}, 
 				mode_index=1, tari=16670, session=2, population=1, 
 				impinj_searchmode=0, hopTableID=0, moto_antenna_conf={}):
 		# Sanity checks
@@ -3659,6 +3690,9 @@ class LLRPROSpec(dict):
 		# patch custom tag report
 		if impinj_report_selection:
 			self['ROSpec']['ROReportSpec']['ImpinjTagReportContentSelector'] = impinj_report_selection
+		
+		if moto_report_selection:
+			self['ROSpec']['ROReportSpec']['MotoTagReportContentSelector'] = moto_report_selection
 		
 		# patch up per-antenna config
 		for antid in antennas:

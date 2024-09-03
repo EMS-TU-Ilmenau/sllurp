@@ -347,8 +347,6 @@ class R420(Reader):
 		self.impinj_searchmode = searchmode # update searchmode
 		return super().startLiveReports(reportCallback, powerDBm=powerDBm, freqMHz=freqMHz, mode=mode,**kwargs)
 
-R420_EU = Reader # for backward compatibility
-
 
 class FX9600(Reader):
 	'''
@@ -365,11 +363,22 @@ class FX9600(Reader):
 			}
 		}
 
+		# report phase
+		self.moto_report_selection = {
+			'EnableZoneID': False, 
+			'EnableZoneName': False, 
+			'EnableAntennaPhysicalPortConfig': False, 
+			'EnablePhase': True, 
+			'EnableGPS': False, 
+			'EnableMLTReport': False
+		}
+
 		super().__init__(*args, **kwargs) # connect to reader
 	
 	def getROSpec(self, **kwargs):
 		return super().getROSpec(
 			moto_antenna_conf=self.moto_antenna_conf, 
+			moto_report_selection=self.moto_report_selection, 
 			**kwargs
 		)
 

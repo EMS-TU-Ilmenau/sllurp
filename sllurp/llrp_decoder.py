@@ -5,6 +5,10 @@ from .util import BITMASK
 
 logger = logging.getLogger(__name__)
 
+EXT_TYPE = 1023 # extension type
+IPJ_VEND = 25882 # Impinj vendor id
+MOTO_VEND = 161 # Motorola/Zebra vendor id
+
 tve_header = '!B'
 tve_header_len = struct.calcsize(tve_header)
 
@@ -31,18 +35,29 @@ impinj_param_formats = {
 	57: ('RSSI', '!h', lambda x: x/100.0)
 }
 
+moto_param_formats = {
+	# param subtype: (param name, struct format, recalculation function)
+	709: ('TagPhase', '!h', lambda x: x*180.0/0x8000)
+}
+
+ext_param_formats = {
+	IPJ_VEND: impinj_param_formats, 
+	MOTO_VEND: moto_param_formats
+}
+
 def decode_tve_parameter(data):
-	"""Generic byte decoding function for tve parameters.
+	'''
+	Generic byte decoding function for tve parameters.
 	
 	Given an array of bytes, tries to interpret a tve parameter from the
 	beginning of the array.  Returns the decoded data and the number of bytes
-	it read."""
-	
+	it read
+	'''
 	# decode the TVE field's header (1 bit "reserved" + 7-bit type)
 	(msgtype,) = struct.unpack(tve_header, data[:tve_header_len])
 	if not msgtype & 0b10000000:
-		# not a TV-encoded param
 		return None, 0
+	
 	msgtype = msgtype & 0x7f
 	
 	par = tve_param_formats.get(msgtype)
@@ -51,6 +66,7 @@ def decode_tve_parameter(data):
 		param_fmt = par[1]
 		logger.debug('found %s (type=%s)', param_name, msgtype)
 	else:
+		logger.warning('Unknown parameter subtype %d', msgtype)
 		return None, 0
 	
 	# decode the body
@@ -60,15 +76,17 @@ def decode_tve_parameter(data):
 		(unpacked,) = struct.unpack(param_fmt, data[tve_header_len:end])
 		return {param_name: unpacked}, end
 	except struct.error:
+		logger.warning('Could not decode %s', param_name)
 		return None, 0
 
-def decode_impinj_parameter(data):
-	"""Generic byte decoding function for impinj parameters.
+def decode_ext_parameter(data):
+	'''
+	Generic byte decoding function for extension parameters.
 	
-	Given an array of bytes, tries to interpret an impinj parameter from the
+	Given an array of bytes, tries to interpret an parameter from the
 	beginning of the array.  Returns the decoded data and the number of bytes
-	it read."""
-	
+	it read
+	'''
 	header = '!HHII'
 	header_len = struct.calcsize(header)
 	if len(data) <= header_len:
@@ -78,17 +96,22 @@ def decode_impinj_parameter(data):
 	# decode the field's header
 	head, _, vendor, msgtype = struct.unpack(header, data[:header_len])
 	type = head & BITMASK(10)
-	if not (type == llrp_proto.EXT_TYPE and vendor == llrp_proto.IPJ_VEND):
-		# not an impinj parameter
+	if type != EXT_TYPE:
 		return None, 0
 	
-	par = impinj_param_formats.get(msgtype)
+	param_formats = ext_param_formats.get(vendor)
+	if not param_formats:
+		logger.warning('Unknown vendor ID %d', vendor)
+		return None, 0
+
+	par = param_formats.get(msgtype)
 	if par:
 		param_name = par[0]
 		param_fmt = par[1]
 		param_calc = par[2]
 		logger.debug('found %s (type=%s)', param_name, msgtype)
 	else:
+		logger.warning('Unknown parameter subtype %d', msgtype)
 		return None, 0
 	
 	# decode the body
@@ -98,4 +121,5 @@ def decode_impinj_parameter(data):
 		(unpacked,) = struct.unpack(param_fmt, data[header_len:end])
 		return {param_name: param_calc(unpacked)}, end
 	except struct.error:
+		logger.warning('Could not decode %s', param_name)
 		return None, 0
