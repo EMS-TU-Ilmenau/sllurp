@@ -2872,7 +2872,7 @@ def decode_ReaderExceptionEvent(data):
 
 	# grab TV-encoded parameters
 	while body:
-		ret, nbytes = llrp_decoder.decode_tve_parameter(body)
+		ret, nbytes = decode_tve_parameter(body)
 		if ret:
 			par.update(ret)
 			body = body[nbytes:]
