@@ -78,12 +78,17 @@ class Reader(LLRPClient):
 		'''Filters tags based on the EPC filters specified on construction
 		:param trp: tagreport
 		:returns: filtered tagreport'''
+		def contains(tag, patterns):
+			# returns True if at least one filter pattern is contained in tag EPC
+			epc = self.getEPC(tag)
+			return any(pattern in epc for pattern in patterns)
+
 		if self.includeEPCs:
 			# include tags in filter
-			return [tag for tag in trp if self.getEPC(tag) in self.includeEPCs]
+			return [tag for tag in trp if contains(tag, self.includeEPCs)]
 		elif self.excludeEPCs:
 			# exclude tags in filter
-			return [tag for tag in trp if self.getEPC(tag) not in self.excludeEPCs]
+			return [tag for tag in trp if not contains(tag, self.excludeEPCs)]
 		else:
 			# nothing to filter
 			return trp
