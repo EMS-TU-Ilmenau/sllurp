@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sllurp"
+version = "0.3.13"
+readme = "README.md"
+authors = [
+    { name = "Ben Ransford", email = "ben@ransford.org" }, 
+    { name = "Niklas Beuster", email = "niklas.beuster@metralabs.com" }
+]
+dependencies = []
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
