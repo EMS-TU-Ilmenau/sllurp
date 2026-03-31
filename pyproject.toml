@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sllurp"
-version = "0.3.13"
+version = "0.3.14"
 readme = "README.md"
 authors = [
     { name = "Ben Ransford", email = "ben@ransford.org" }, 

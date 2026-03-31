@@ -99,7 +99,6 @@ for tag in tags:
 import logging
 
 logging.basicConfig(level=logging.INFO)
-logging.basicConfig(filename='llrp.log', level=logging.DEBUG)
 ```
 
 ## GUI

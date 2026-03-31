@@ -305,7 +305,6 @@ class LLRPClient(object):
 	
 	def getROSpec(self, *args, **kwargs):
 		logger.debug('Creating ROSpec')
-		self.parseCapabilities(self.capabilities) # check if parameters are valid
 		# create an ROSpec to define the reader's inventorying behavior
 		rospec = LLRPROSpec(1, *args, **kwargs)
 		logger.debug('ROSpec: %s', rospec)
@@ -313,6 +312,7 @@ class LLRPClient(object):
 	
 	def startInventory(self):
 		'''Add a ROSpec to the reader and enable it.'''
+		self.parseCapabilities(self.capabilities) # check if parameters are valid
 		rospec = self.getROSpec(
 			antennas=self.antennas, 
 			power=self.power, 
