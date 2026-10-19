@@ -138,7 +138,9 @@ class Transport:
 		self.isConnected = False
 	
 	def connect(self, ip, port):
+		self.sock.settimeout(3)
 		self.sock.connect((ip, port))
+		self.sock.settimeout(None)
 		self.isConnected = True
 	
 	def write(self, msg):

@@ -55,7 +55,7 @@ class InventoryApp(object):
 		tk.OptionMenu(self.conf, self.model, *(readerClasses.keys())).grid(row=row, column=1, sticky=tk.W+tk.E)
 		#  button for connect
 		row += 1
-		self.btnConnect = tk.Button(self.conf, text='Connect reader', command=self.connect)
+		self.btnConnect = tk.Button(self.conf, text='Connect', command=self.connect)
 		self.btnConnect.grid(row=row, column=0, columnspan=2, sticky=tk.W+tk.E)
 		
 		# make the found tags list
@@ -235,14 +235,33 @@ class InventoryApp(object):
 	
 	def connect(self):
 		if not self.reader:
+			self.btnConnect.config(state=tk.DISABLED)
 			try:
 				self.readerClass = readerClasses[self.model.get()]
 				self.reader = self.readerClass(self.ip.get())
 			except:
 				pass
 			else:
-				self.buildSettings()
-				self.btnConnect.config(state=tk.DISABLED)
+				if not hasattr(self, 'power'):
+					self.buildSettings()
+				self.btnConnect.config(text='Disconnect', command=self.disconnect)
+			
+			self.btnConnect.config(state=tk.ACTIVE)
+	
+
+	def disconnect(self):
+		self.btnConnect.config(state=tk.DISABLED)
+		try:
+			self.reader.stopPolitely()
+			self.reader.disconnect()
+		except:
+			pass
+		else:
+			self.reader = None
+			self.btnConnect.config(text='Connect', command=self.connect)
+		
+		self.btnConnect.config(state=tk.ACTIVE)
+	
 	
 	def getSettings(self):
 		# parse antenna ports from string
